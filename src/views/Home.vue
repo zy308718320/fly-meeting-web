@@ -10,6 +10,8 @@
 
 <script>
 /* eslint-disable no-console */
+// eslint-disable-next-line no-unused-vars
+import adapter from 'webrtc-adapter';
 import {
   Rippler,
   // Binarize,
@@ -37,11 +39,11 @@ import {
   // ResizeNearestNeighbor,
   // Resize,
   // ResizeBuiltin,
-  // Sepia,
+  Sepia,
   // Sharpen,
   // Solarize,
   // Transpose,
-  Twril,
+  // Twril,
 } from '@/utils/effect';
 import HelloWorld from '@/components/HelloWorld.vue';
 
@@ -61,12 +63,16 @@ export default {
   },
   methods: {
     async play() {
-      const displayMediaOptions = {
-        video: {
-          cursor: 'always',
-        }, // 视频信息的设置
-        audio: false, // 是否包含音频信息
-        logicalSurface: false, // 设置是否包含所选屏幕外区域的一些信息
+      // const displayMediaOptions = {
+      //   video: {
+      //     cursor: 'always',
+      //   }, // 视频信息的设置
+      //   audio: false, // 是否包含音频信息
+      //   logicalSurface: false, // 设置是否包含所选屏幕外区域的一些信息
+      // };
+      const userMediaOptions = {
+        video: true,
+        audio: true,
       };
       let isSet = false;
       const {
@@ -90,7 +96,12 @@ export default {
           this.rippler = rippler;
         }
       };
-      video.srcObject = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions);
+      const {
+        getUserMedia,
+        // getDisplayMedia,
+      } = navigator.mediaDevices;
+      video.srcObject = await getUserMedia(userMediaOptions);
+      // video.srcObject = await getDisplayMedia(displayMediaOptions);
       video.play();
       const draw = () => {
         if (!isSet && video.videoWidth > 0) {
@@ -101,7 +112,7 @@ export default {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const filtered = Twril(imageData, 0.5, 0.5, canvas.height / 3, 360, 0, true);
+        const filtered = Sepia(imageData);
         ctx.putImageData(filtered, 0, 0);
         requestAnimationFrame(draw);
       };
