@@ -1,0 +1,5 @@
+build/*.js
+src/mock/*.js
+*.config.js
+tests
+src/utils/test.js
