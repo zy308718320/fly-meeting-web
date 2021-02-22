@@ -1,4 +1,4 @@
-# vue-app3
+# web-meeting
 
 ## Project setup
 ```
