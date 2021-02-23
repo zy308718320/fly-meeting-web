@@ -39,12 +39,14 @@ import {
   // ResizeNearestNeighbor,
   // Resize,
   // ResizeBuiltin,
-  Sepia,
+  // Sepia,
   // Sharpen,
   // Solarize,
   // Transpose,
   // Twril,
 } from '@/utils/effect';
+import * as tf from '@tensorflow/tfjs';
+import * as bodyPix from '@tensorflow-models/body-pix';
 import HelloWorld from '@/components/HelloWorld.vue';
 
 export default {
@@ -72,13 +74,13 @@ export default {
       // };
       const userMediaOptions = {
         video: true,
-        audio: true,
+        audio: false,
       };
       let isSet = false;
       const {
         logo, video, canvas, canvas2,
       } = this.$refs;
-      const ctx = canvas.getContext('2d');
+      // const ctx = canvas.getContext('2d');
       const ctx2 = canvas2.getContext('2d');
       logo.onload = () => {
         canvas2.width = logo.width;
@@ -103,20 +105,40 @@ export default {
       video.srcObject = await getUserMedia(userMediaOptions);
       // video.srcObject = await getDisplayMedia(displayMediaOptions);
       video.play();
-      const draw = () => {
+      tf.getBackend();
+      const net = await bodyPix.load();
+      const backgroundBlurAmount = 18;
+      const edgeBlurAmount = 8;
+      const flipHorizontal = false;
+      const draw = async () => {
         if (!isSet && video.videoWidth > 0) {
+          video.width = video.videoWidth;
+          video.height = video.videoHeight;
           canvas.width = video.videoWidth;
           canvas.height = video.videoHeight;
           isSet = true;
         }
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const filtered = Sepia(imageData);
-        ctx.putImageData(filtered, 0, 0);
+        const segmentation = await net.segmentPerson(video);
+        bodyPix.drawBokehEffect(
+          canvas, video, segmentation, backgroundBlurAmount, edgeBlurAmount, flipHorizontal,
+        );
         requestAnimationFrame(draw);
       };
       requestAnimationFrame(draw);
+      // const draw = () => {
+      //   if (!isSet && video.videoWidth > 0) {
+      //     canvas.width = video.videoWidth;
+      //     canvas.height = video.videoHeight;
+      //     isSet = true;
+      //   }
+      //   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      //   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      //   ctx.clearRect(0, 0, canvas.width, canvas.height);
+      //   const filtered = Sepia(imageData);
+      //   ctx.putImageData(filtered, 0, 0);
+      //   requestAnimationFrame(draw);
+      // };
+      // requestAnimationFrame(draw);
     },
     canvasHover(e) {
       if (this.canvas && this.rippler) {
