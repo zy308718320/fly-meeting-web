@@ -1,5 +1,10 @@
 <template>
   <div class="home">
+    <canvas
+      ref="canvas"
+      class="canvas"
+      @mousemove="canvasHover"
+    />
     <div class="box">
       <div
         class="box-btn"
@@ -47,10 +52,15 @@
 </template>
 
 <script>
+import { throttle } from 'lodash-es';
+import { Rippler } from '@/utils/effect';
+import bgImg from '@/assets/images/bg.jpg';
 
 export default {
   data() {
     return {
+      canvas: null,
+      rippler: null,
       visible: false,
       isJoin: false,
       form: {
@@ -59,7 +69,42 @@ export default {
       },
     };
   },
+  mounted() {
+    this.play();
+  },
   methods: {
+    play() {
+      const { canvas } = this.$refs;
+      const ctx = canvas.getContext('2d');
+      const bg = new Image();
+      bg.src = bgImg;
+      bg.onload = () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
+        const logoData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const rippler = new Rippler(logoData, 60, 8);
+        rippler.onUpdate = (target) => {
+          ctx.putImageData(target, 0, 0);
+        };
+        if (!this.canvas) {
+          this.canvas = canvas;
+        }
+        if (!this.rippler) {
+          this.rippler = rippler;
+        }
+      };
+    },
+    canvasHover(e) {
+      if (this.canvas && this.rippler) {
+        const mouseX = e.pageX - this.canvas.offsetLeft;
+        const mouseY = e.pageY - this.canvas.offsetTop;
+        const drawRipple = () => {
+          this.rippler.drawRipple(mouseX, mouseY, 8, 1);
+        };
+        throttle(drawRipple, 30)();
+      }
+    },
     createMeeting() {
       this.isJoin = false;
       this.clearForm();
@@ -84,7 +129,23 @@ export default {
 </script>
 
 <style lang="less">
+.home {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+}
+.canvas {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 0;
+}
 .box {
+  position: relative;
   width: 500px;
   display: flex;
   justify-content: center;
@@ -92,6 +153,7 @@ export default {
   margin: 0 auto;
   padding-top: 300px;
   padding-left: -30px;
+  z-index: 1;
   &-btn {
     cursor: pointer;
     flex: 1;
@@ -103,7 +165,7 @@ export default {
     font-size: 18px;
     border-radius: 6px;
     background: #fff;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, .12), 0 0 12px rgba(0, 0, 0, .04);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, .12);
     &:hover {
       box-shadow: none;
     }

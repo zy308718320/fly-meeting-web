@@ -1,6 +1,9 @@
 <template>
   <div class="meeting">
-    <canvas ref="video" />
+    <canvas
+      ref="video"
+      class="video"
+    />
   </div>
 </template>
 
@@ -50,3 +53,21 @@ export default {
   },
 };
 </script>
+
+<style lang="less">
+.meeting {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+}
+.video {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+}
+</style>
