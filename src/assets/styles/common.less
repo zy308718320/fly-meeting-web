@@ -1,0 +1,28 @@
+body, h1, h2, h3, h4, h5, h6, hr, p, blockquote, dl, dt, dd, ul, ol, li, pre, form, fieldset, legend, button, input, textarea, select, th, td { margin:0; padding:0; }
+/*全站默认灰色字体*/
+body { background-color:#efeff4; font:14px/1.5 '\5FAE\8F6F\96C5\9ED1'; color:#000; -webkit-text-size-adjust:100%!important; }
+/*去除表单元素的默认效果*/
+button, input, textarea, select{
+  font-size:100%; font-family:inherit; color:inherit;
+  -webkit-appearance:none;
+}
+select:focus,
+select:active {  background-color:transparent; }
+/*禁用常用标签在选中的时候出现半透明效果或者黄色边框*/
+body, a, img, label, button, input, textarea, select{
+  outline:none;
+  -webkit-tap-highlight-color:rgba(0, 0, 0, 0);
+}
+input::-webkit-input-placeholder { color:#b2b2b2; /* 设置input的提示文字默认为灰色 */}
+h1, h2, h3, h4, h5, h6, strong, b { font-weight:normal; }
+ul, ol { list-style:none; }
+table { border-collapse:collapse; border-spacing:0; }
+img { border:none; }
+a { color:#007aff; text-decoration:none;  }
+a, img {
+  -webkit-touch-callout:none; /* 禁止长按链接与图片弹出菜单 */
+
+}
+.hide {
+  display: none;
+}

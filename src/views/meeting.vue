@@ -1,0 +1,52 @@
+<template>
+  <div class="meeting">
+    <canvas ref="video" />
+  </div>
+</template>
+
+<script>
+// eslint-disable-next-line no-unused-vars
+import adapter from 'webrtc-adapter';
+import * as tf from '@tensorflow/tfjs';
+import * as bodyPix from '@tensorflow-models/body-pix';
+
+export default {
+  mounted() {
+    this.play();
+  },
+  methods: {
+    async play() {
+      const userMediaOptions = {
+        video: true,
+        audio: false,
+      };
+      const { video } = this.$refs;
+      const videoEl = document.createElement('video');
+      const { getUserMedia } = navigator.mediaDevices;
+      let isSet = false;
+      videoEl.srcObject = await getUserMedia(userMediaOptions);
+      videoEl.play();
+      tf.getBackend();
+      const net = await bodyPix.load();
+      const backgroundBlurAmount = 18;
+      const edgeBlurAmount = 8;
+      const flipHorizontal = false;
+      const draw = async () => {
+        if (!isSet && videoEl.videoWidth > 0) {
+          videoEl.width = videoEl.videoWidth;
+          videoEl.height = videoEl.videoHeight;
+          video.width = videoEl.videoWidth;
+          video.height = videoEl.videoHeight;
+          isSet = true;
+        }
+        const segmentation = await net.segmentPerson(videoEl);
+        bodyPix.drawBokehEffect(
+          video, videoEl, segmentation, backgroundBlurAmount, edgeBlurAmount, flipHorizontal,
+        );
+        requestAnimationFrame(draw);
+      };
+      requestAnimationFrame(draw);
+    },
+  },
+};
+</script>

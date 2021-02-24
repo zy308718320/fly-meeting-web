@@ -1,10 +1,9 @@
 <template>
   <div class="home">
-    <img ref="logo" class="hide" alt="Vue logo" src="../assets/test.png">
+    <img ref="logo" class="hide" alt="Vue logo" src="../assets/images/test.png">
     <video ref="video" class="hide" src=""></video>
     <canvas ref="canvas"></canvas>
     <canvas ref="canvas2" @mousemove="canvasHover"></canvas>
-    <HelloWorld msg="Welcome to Your Vue.js App"/>
   </div>
 </template>
 
@@ -47,13 +46,9 @@ import {
 } from '@/utils/effect';
 import * as tf from '@tensorflow/tfjs';
 import * as bodyPix from '@tensorflow-models/body-pix';
-import HelloWorld from '@/components/HelloWorld.vue';
 
 export default {
   name: 'Home',
-  components: {
-    HelloWorld,
-  },
   data() {
     return {
       canvas: null,
@@ -134,7 +129,7 @@ export default {
       //   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       //   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       //   ctx.clearRect(0, 0, canvas.width, canvas.height);
-      //   const filtered = Sepia(imageData);
+      //   const filtered = Sepia(imageData);w
       //   ctx.putImageData(filtered, 0, 0);
       //   requestAnimationFrame(draw);
       // };
@@ -150,9 +145,3 @@ export default {
   },
 };
 </script>
-
-<style lang="less">
-.hide {
-  display: none;
-}
-</style>
