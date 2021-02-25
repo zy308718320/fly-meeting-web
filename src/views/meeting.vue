@@ -10,8 +10,10 @@
 <script>
 // eslint-disable-next-line no-unused-vars
 import adapter from 'webrtc-adapter';
+// import webwork from '@kolodny/webwork';
 import * as tf from '@tensorflow/tfjs';
 import * as bodyPix from '@tensorflow-models/body-pix';
+import { BoxBlur } from '@/utils/effect';
 
 export default {
   mounted() {
@@ -24,6 +26,7 @@ export default {
         audio: false,
       };
       const { video } = this.$refs;
+      const ctx = video.getContext('2d');
       const videoEl = document.createElement('video');
       const { getUserMedia } = navigator.mediaDevices;
       let isSet = false;
@@ -31,9 +34,9 @@ export default {
       videoEl.play();
       tf.getBackend();
       const net = await bodyPix.load();
-      const backgroundBlurAmount = 18;
-      const edgeBlurAmount = 8;
-      const flipHorizontal = false;
+      // const backgroundBlurAmount = 18;
+      // const edgeBlurAmount = 8;
+      // const flipHorizontal = false;
       const draw = async () => {
         if (!isSet && videoEl.videoWidth > 0) {
           videoEl.width = videoEl.videoWidth;
@@ -43,9 +46,13 @@ export default {
           isSet = true;
         }
         const segmentation = await net.segmentPerson(videoEl);
-        bodyPix.drawBokehEffect(
-          video, videoEl, segmentation, backgroundBlurAmount, edgeBlurAmount, flipHorizontal,
-        );
+        ctx.drawImage(videoEl, 0, 0, video.width, video.height);
+        const videoData = ctx.getImageData(0, 0, video.width, video.height);
+        const filtered = BoxBlur(videoData, 3, 3, 2, segmentation.data);
+        ctx.putImageData(filtered, 0, 0);
+        // bodyPix.drawBokehEffect(
+        //   video, videoEl, segmentation, backgroundBlurAmount, edgeBlurAmount, flipHorizontal,
+        // );
         requestAnimationFrame(draw);
       };
       requestAnimationFrame(draw);

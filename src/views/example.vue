@@ -129,7 +129,7 @@ export default {
       //   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       //   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       //   ctx.clearRect(0, 0, canvas.width, canvas.height);
-      //   const filtered = Sepia(imageData);w
+      //   const filtered = Sepia(imageData);
       //   ctx.putImageData(filtered, 0, 0);
       //   requestAnimationFrame(draw);
       // };

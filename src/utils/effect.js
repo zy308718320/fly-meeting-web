@@ -13,7 +13,7 @@ import helper from './helper';
 
 export function ConvolutionFilter(
   srcImageData, matrixX, matrixY, matrix, divisor,
-  bias, preserveAlpha, clamp, color, alpha,
+  bias, preserveAlpha, clamp, color, alpha, maskArray,
 ) {
   const srcPixels = srcImageData.data;
   const srcWidth = srcImageData.width;
@@ -42,52 +42,57 @@ export function ConvolutionFilter(
       let a = 0;
       let replace = false;
       let mIndex = 0;
-      for (let row = -rows; row <= rows; row += 1) {
-        const rowIndex = y + row;
-        let offset;
-        if (rowIndex >= 0 && rowIndex < srcHeight) {
-          offset = rowIndex * srcWidth;
-        } else if (clamp) {
-          offset = y * srcWidth;
-        } else {
-          replace = true;
-        }
-        for (let col = -cols; col <= cols; col += 1) {
-          const m = matrix[mIndex];
-          mIndex += 1;
-          if (m !== 0) {
-            let colIndex = x + col;
-            if (!(colIndex >= 0 && colIndex < srcWidth)) {
-              if (clamp) {
-                colIndex = x;
-              } else {
-                replace = true;
+      const isMask = helper.getIsMask(maskArray, index);
+      if (!isMask) {
+        for (let row = -rows; row <= rows; row += 1) {
+          const rowIndex = y + row;
+          let offset;
+          if (rowIndex >= 0 && rowIndex < srcHeight) {
+            offset = rowIndex * srcWidth;
+          } else if (clamp) {
+            offset = y * srcWidth;
+          } else {
+            replace = true;
+          }
+          for (let col = -cols; col <= cols; col += 1) {
+            const m = matrix[mIndex];
+            mIndex += 1;
+            if (m !== 0) {
+              let colIndex = x + col;
+              if (!(colIndex >= 0 && colIndex < srcWidth)) {
+                if (clamp) {
+                  colIndex = x;
+                } else {
+                  replace = true;
+                }
               }
-            }
-            if (replace) {
-              r += m * clampR;
-              g += m * clampG;
-              b += m * clampB;
-              a += m * clampA;
-            } else {
-              const p = (offset + colIndex) << 2;
-              r += m * srcPixels[p];
-              g += m * srcPixels[p + 1];
-              b += m * srcPixels[p + 2];
-              a += m * srcPixels[p + 3];
+              if (replace) {
+                r += m * clampR;
+                g += m * clampG;
+                b += m * clampB;
+                a += m * clampA;
+              } else {
+                const p = (offset + colIndex) << 2;
+                r += m * srcPixels[p];
+                g += m * srcPixels[p + 1];
+                b += m * srcPixels[p + 2];
+                a += m * srcPixels[p + 3];
+              }
             }
           }
         }
+        const rv = r / divisor + bias;
+        const gv = g / divisor + bias;
+        const bv = b / divisor + bias;
+        const av = a / divisor + bias;
+        dstPixels[index] = rv > 255 ? 255 : rv < 0 ? 0 : rv | 0;
+        dstPixels[index + 1] = gv > 255 ? 255 : gv < 0 ? 0 : gv | 0;
+        dstPixels[index + 2] = bv > 255 ? 255 : bv < 0 ? 0 : bv | 0;
+        dstPixels[index + 3] = preserveAlpha
+          ? srcPixels[index + 3] : av > 255 ? 255 : av < 0 ? 0 : av | 0;
+      } else {
+        helper.copyPixel(dstPixels, srcPixels, index);
       }
-      const rv = r / divisor + bias;
-      const gv = g / divisor + bias;
-      const bv = b / divisor + bias;
-      const av = a / divisor + bias;
-      dstPixels[index] = rv > 255 ? 255 : rv < 0 ? 0 : rv | 0;
-      dstPixels[index + 1] = gv > 255 ? 255 : gv < 0 ? 0 : gv | 0;
-      dstPixels[index + 2] = bv > 255 ? 255 : bv < 0 ? 0 : bv | 0;
-      dstPixels[index + 3] = preserveAlpha
-        ? srcPixels[index + 3] : av > 255 ? 255 : av < 0 ? 0 : av | 0;
     }
   }
   return dstImageData;
@@ -159,9 +164,11 @@ export function ColorMatrixFilter(srcImageData, matrix) {
 }
 
 /**
+ * @param srcImageData
  * @param threshold 0.0 <= n <= 1.0
+ * @param maskArray
  */
-export function Binarize(srcImageData, threshold) {
+export function Binarize(srcImageData, threshold, maskArray) {
   const srcPixels = srcImageData.data;
   const srcWidth = srcImageData.width;
   const srcHeight = srcImageData.height;
@@ -173,9 +180,14 @@ export function Binarize(srcImageData, threshold) {
   }
   threshold *= 255;
   for (let i = 0; i < srcLength; i += 4) {
-    const avg = srcPixels[i] + srcPixels[i + 1] + srcPixels[i + 2] / 3;
-    dstPixels[i] = dstPixels[i + 1] = dstPixels[i + 2] = avg <= threshold ? 0 : 255;
-    dstPixels[i + 3] = 255;
+    const isMask = helper.getIsMask(maskArray, i);
+    if (!isMask) {
+      const avg = srcPixels[i] + srcPixels[i + 1] + srcPixels[i + 2] / 3;
+      dstPixels[i] = dstPixels[i + 1] = dstPixels[i + 2] = avg <= threshold ? 0 : 255;
+      dstPixels[i + 3] = 255;
+    } else {
+      helper.copyPixel(dstPixels, srcPixels, i);
+    }
   }
   return dstImageData;
 }
@@ -225,7 +237,7 @@ export function BlendSubtract(srcImageData, blendImageData) {
  * @see http://www.jhlabs.com/ip/blurring.html
  * Copyright 2005 Huxtable.com. All rights reserved.
  */
-export function BoxBlur(srcImageData, hRadius, vRadius, quality) {
+export function BoxBlur(srcImageData, hRadius, vRadius, quality, maskArray) {
   function blur(src, dst, width, height, radius) {
     const tableSize = radius * 2 + 1;
     const radiusPlus1 = radius + 1;
@@ -266,18 +278,23 @@ export function BoxBlur(srcImageData, hRadius, vRadius, quality) {
       }
       for (x = 0; x < width; x += 1) {
         p = dstIndex << 2;
-        dst[p] = sumTable[r];
-        dst[p + 1] = sumTable[g];
-        dst[p + 2] = sumTable[b];
-        dst[p + 3] = sumTable[a];
-
-        nextIndex = x + radiusPlus1;
-        if (nextIndex > widthMinus1) {
-          nextIndex = widthMinus1;
-        }
-        prevIndex = x - radius;
-        if (prevIndex < 0) {
-          prevIndex = 0;
+        const isMask = helper.getIsMask(maskArray, p);
+        if (!isMask) {
+          // todo 未完成
+          dst[p] = sumTable[r];
+          dst[p + 1] = sumTable[g];
+          dst[p + 2] = sumTable[b];
+          dst[p + 3] = sumTable[a];
+          nextIndex = x + radiusPlus1;
+          if (nextIndex > widthMinus1) {
+            nextIndex = widthMinus1;
+          }
+          prevIndex = x - radius;
+          if (prevIndex < 0) {
+            prevIndex = 0;
+          }
+        } else {
+          helper.copyPixel(dst, src, p);
         }
         next = (srcIndex + nextIndex) << 2;
         prev = (srcIndex + prevIndex) << 2;
@@ -308,7 +325,7 @@ export function BoxBlur(srcImageData, hRadius, vRadius, quality) {
 /**
  * @ param strength 1 <= n <= 4
  */
-export function GaussianBlur(srcImageData, strength) {
+export function GaussianBlur(srcImageData, strength, maskArray) {
   let size;
   let matrix;
   let divisor;
@@ -368,7 +385,7 @@ export function GaussianBlur(srcImageData, strength) {
       divisor = 16;
       break;
   }
-  return ConvolutionFilter(srcImageData, size, size, matrix, divisor, 0, false);
+  return ConvolutionFilter(srcImageData, size, size, matrix, divisor, 0, false, null, null, null, maskArray);
 }
 
 /**
@@ -807,10 +824,7 @@ export function Crop(srcImageData, x, y, width, height) {
     for (srcCol = srcLeft, dstCol = dstLeft; srcCol < srcRight; srcCol += 1, dstCol += 1) {
       srcIndex = (srcRow * srcWidth + srcCol) << 2;
       dstIndex = (dstRow * width + dstCol) << 2;
-      dstPixels[dstIndex] = srcPixels[srcIndex];
-      dstPixels[dstIndex + 1] = srcPixels[srcIndex + 1];
-      dstPixels[dstIndex + 2] = srcPixels[srcIndex + 2];
-      dstPixels[dstIndex + 3] = srcPixels[srcIndex + 3];
+      helper.copyPixel(dstPixels, srcPixels, srcIndex, dstIndex);
     }
   }
   return dstImageData;
@@ -910,10 +924,7 @@ export function DisplacementMapFilter(
           srcIndex = dstIndex;
         }
       }
-      dstPixels[dstIndex] = srcPixels[srcIndex];
-      dstPixels[dstIndex + 1] = srcPixels[srcIndex + 1];
-      dstPixels[dstIndex + 2] = srcPixels[srcIndex + 2];
-      dstPixels[dstIndex + 3] = srcPixels[srcIndex + 3];
+      helper.copyPixel(dstPixels, srcPixels, srcIndex, dstIndex);
     }
   }
   return dstImageData;
@@ -1077,11 +1088,7 @@ export function Flip(srcImageData, vertical) {
       } else {
         dstIndex = (y * srcWidth + (srcWidth - x - 1)) << 2;
       }
-
-      dstPixels[dstIndex] = srcPixels[srcIndex];
-      dstPixels[dstIndex + 1] = srcPixels[srcIndex + 1];
-      dstPixels[dstIndex + 2] = srcPixels[srcIndex + 2];
-      dstPixels[dstIndex + 3] = srcPixels[srcIndex + 3];
+      helper.copyPixel(dstPixels, srcPixels, srcIndex, dstIndex);
     }
   }
   return dstImageData;
@@ -1183,7 +1190,7 @@ export function Invert(srcImageData) {
   return dstImageData;
 }
 
-export function Mosaic(srcImageData, blockSize) {
+export function Mosaic(srcImageData, blockSize, maskArray) {
   const srcPixels = srcImageData.data;
   const srcWidth = srcImageData.width;
   const srcHeight = srcImageData.height;
@@ -1240,15 +1247,19 @@ export function Mosaic(srcImageData, blockSize) {
         yIndex = y * srcWidth;
         for (x = xStart; x < xEnd; x += 1) {
           index = (yIndex + x) << 2;
-          dstPixels[index] = r;
-          dstPixels[index + 1] = g;
-          dstPixels[index + 2] = b;
-          dstPixels[index + 3] = a;
+          const isMask = helper.getIsMask(maskArray, index);
+          if (!isMask) {
+            dstPixels[index] = r;
+            dstPixels[index + 1] = g;
+            dstPixels[index + 2] = b;
+            dstPixels[index + 3] = a;
+          } else {
+            helper.copyPixel(dstPixels, srcPixels, index);
+          }
         }
       }
     }
   }
-
   return dstImageData;
 }
 
@@ -1423,10 +1434,7 @@ export function ResizeNearestNeighbor(srcImageData, width, height) {
     offset = ((y * yFactor) | 0) * srcWidth;
     for (x = 0; x < width; x += 1) {
       srcIndex = (offset + x * xFactor) << 2;
-      dstPixels[dstIndex] = srcPixels[srcIndex];
-      dstPixels[dstIndex + 1] = srcPixels[srcIndex + 1];
-      dstPixels[dstIndex + 2] = srcPixels[srcIndex + 2];
-      dstPixels[dstIndex + 3] = srcPixels[srcIndex + 3];
+      helper.copyPixel(dstPixels, srcPixels, srcIndex, dstIndex);
       dstIndex += 4;
     }
   }
@@ -1544,10 +1552,7 @@ export function Transpose(srcImageData) {
     for (x = 0; x < srcWidth; x += 1) {
       srcIndex = (y * srcWidth + x) << 2;
       dstIndex = (x * srcHeight + y) << 2;
-      dstPixels[dstIndex] = srcPixels[srcIndex];
-      dstPixels[dstIndex + 1] = srcPixels[srcIndex + 1];
-      dstPixels[dstIndex + 2] = srcPixels[srcIndex + 2];
-      dstPixels[dstIndex + 3] = srcPixels[srcIndex + 3];
+      helper.copyPixel(dstPixels, srcPixels, srcIndex, dstIndex);
     }
   }
   return dstImageData;
@@ -1589,10 +1594,7 @@ export function Twril(srcImageData, centerX, centerY, radius, angle, edge, smoot
       distance = dx * dx + dy * dy;
       if (distance > radius2) {
         // out of the effected area. just copy the pixel
-        dstPixels[dstIndex] = srcPixels[dstIndex];
-        dstPixels[dstIndex + 1] = srcPixels[dstIndex + 1];
-        dstPixels[dstIndex + 2] = srcPixels[dstIndex + 2];
-        dstPixels[dstIndex + 3] = srcPixels[dstIndex + 3];
+        helper.copyPixel(dstPixels, srcPixels, dstIndex, dstIndex);
       } else {
         // main formula
         distance = Math.sqrt(distance);
@@ -1608,10 +1610,7 @@ export function Twril(srcImageData, centerX, centerY, radius, angle, edge, smoot
           // round tx, ty
           // TODO edge actions!!
           srcIndex = ((ty + 0.5 | 0) * srcWidth + (tx + 0.5 | 0)) << 2;
-          dstPixels[dstIndex] = srcPixels[srcIndex];
-          dstPixels[dstIndex + 1] = srcPixels[srcIndex + 1];
-          dstPixels[dstIndex + 2] = srcPixels[srcIndex + 2];
-          dstPixels[dstIndex + 3] = srcPixels[srcIndex + 3];
+          helper.copyPixel(dstPixels, srcPixels, srcIndex, dstIndex);
         }
       }
       dstIndex += 4;

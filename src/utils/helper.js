@@ -114,10 +114,7 @@ export default {
         se = src[i + 3] << 24 | src[i] << 16 | src[i + 1] << 8 | src[i + 2];
       } else {
         // no interpolation required
-        dst[dstIndex] = src[i];
-        dst[dstIndex + 1] = src[i + 1];
-        dst[dstIndex + 2] = src[i + 2];
-        dst[dstIndex + 3] = src[i + 3];
+        this.copyPixel(dst, src, i, dstIndex);
         return;
       }
     } else {
@@ -214,5 +211,21 @@ export default {
       }
     }
     return rgb;
+  },
+  getIsMask(maskArray, index) {
+    let isMask = false;
+    if (maskArray) {
+      isMask = !!maskArray[index / 4];
+    }
+    return isMask;
+  },
+  copyPixel(dst, src, index, dstIndex) {
+    if (!dstIndex && dstIndex !== 0) {
+      dstIndex = index;
+    }
+    dst[dstIndex] = src[index];
+    dst[dstIndex + 1] = src[index + 1];
+    dst[dstIndex + 2] = src[index + 2];
+    dst[dstIndex + 3] = src[index + 3];
   },
 };
