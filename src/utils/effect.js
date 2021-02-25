@@ -113,7 +113,7 @@ export function Clone(srcImageData) {
   return Copy(srcImageData, helper.createImageData(srcImageData.width, srcImageData.height));
 }
 
-export function ColorMatrixFilter(srcImageData, matrix) {
+export function ColorMatrixFilter(srcImageData, matrix, maskArray) {
   const srcPixels = srcImageData.data;
   const srcWidth = srcImageData.width;
   const srcHeight = srcImageData.height;
@@ -154,12 +154,16 @@ export function ColorMatrixFilter(srcImageData, matrix) {
     const gv = r * m5 + g * m6 + b * m7 + a * m8 + m9;
     const bv = r * m10 + g * m11 + b * m12 + a * m13 + m14;
     const av = r * m15 + g * m16 + b * m17 + a * m18 + m19;
-    dstPixels[i] = rv > 255 ? 255 : rv < 0 ? 0 : rv | 0;
-    dstPixels[i + 1] = gv > 255 ? 255 : gv < 0 ? 0 : gv | 0;
-    dstPixels[i + 2] = bv > 255 ? 255 : bv < 0 ? 0 : bv | 0;
-    dstPixels[i + 3] = av > 255 ? 255 : av < 0 ? 0 : av | 0;
+    const isMask = helper.getIsMask(maskArray, i);
+    if (!isMask) {
+      dstPixels[i] = rv > 255 ? 255 : rv < 0 ? 0 : rv | 0;
+      dstPixels[i + 1] = gv > 255 ? 255 : gv < 0 ? 0 : gv | 0;
+      dstPixels[i + 2] = bv > 255 ? 255 : bv < 0 ? 0 : bv | 0;
+      dstPixels[i + 3] = av > 255 ? 255 : av < 0 ? 0 : av | 0;
+    } else {
+      helper.copyPixel(dstPixels, srcPixels, i);
+    }
   }
-
   return dstImageData;
 }
 
@@ -237,7 +241,7 @@ export function BlendSubtract(srcImageData, blendImageData) {
  * @see http://www.jhlabs.com/ip/blurring.html
  * Copyright 2005 Huxtable.com. All rights reserved.
  */
-export function BoxBlur(srcImageData, hRadius, vRadius, quality, maskArray) {
+export function BoxBlur(srcImageData, hRadius, vRadius, quality) {
   function blur(src, dst, width, height, radius) {
     const tableSize = radius * 2 + 1;
     const radiusPlus1 = radius + 1;
@@ -278,23 +282,17 @@ export function BoxBlur(srcImageData, hRadius, vRadius, quality, maskArray) {
       }
       for (x = 0; x < width; x += 1) {
         p = dstIndex << 2;
-        const isMask = helper.getIsMask(maskArray, p);
-        if (!isMask) {
-          // todo 未完成
-          dst[p] = sumTable[r];
-          dst[p + 1] = sumTable[g];
-          dst[p + 2] = sumTable[b];
-          dst[p + 3] = sumTable[a];
-          nextIndex = x + radiusPlus1;
-          if (nextIndex > widthMinus1) {
-            nextIndex = widthMinus1;
-          }
-          prevIndex = x - radius;
-          if (prevIndex < 0) {
-            prevIndex = 0;
-          }
-        } else {
-          helper.copyPixel(dst, src, p);
+        dst[p] = sumTable[r];
+        dst[p + 1] = sumTable[g];
+        dst[p + 2] = sumTable[b];
+        dst[p + 3] = sumTable[a];
+        nextIndex = x + radiusPlus1;
+        if (nextIndex > widthMinus1) {
+          nextIndex = widthMinus1;
+        }
+        prevIndex = x - radius;
+        if (prevIndex < 0) {
+          prevIndex = 0;
         }
         next = (srcIndex + nextIndex) << 2;
         prev = (srcIndex + prevIndex) << 2;
@@ -730,7 +728,7 @@ export function BrightnessContrastPhotoshop(srcImageData, brightness, contrast) 
   return dstImageData;
 }
 
-export function Channels(srcImageData, channel) {
+export function Channels(srcImageData, channel, maskArray) {
   let matrix;
   switch (channel) {
     case 2: // green
@@ -758,7 +756,7 @@ export function Channels(srcImageData, channel) {
       ];
       break;
   }
-  return ColorMatrixFilter(srcImageData, matrix);
+  return ColorMatrixFilter(srcImageData, matrix, maskArray);
 }
 
 /**
@@ -780,7 +778,7 @@ export function CloneBuiltin(srcImageData) {
 
 export function ColorTransformFilter(
   srcImageData, redMultiplier, greenMultiplier, blueMultiplier, alphaMultiplier,
-  redOffset, greenOffset, blueOffset, alphaOffset,
+  redOffset, greenOffset, blueOffset, alphaOffset, maskArray,
 ) {
   const srcPixels = srcImageData.data;
   const srcWidth = srcImageData.width;
@@ -794,10 +792,15 @@ export function ColorTransformFilter(
     const gv = srcPixels[i + 1] * greenMultiplier + greenOffset;
     const bv = srcPixels[i + 2] * blueMultiplier + blueOffset;
     const av = srcPixels[i + 3] * alphaMultiplier + alphaOffset;
-    dstPixels[i] = rv > 255 ? 255 : rv < 0 ? 0 : rv;
-    dstPixels[i + 1] = gv > 255 ? 255 : gv < 0 ? 0 : gv;
-    dstPixels[i + 2] = bv > 255 ? 255 : bv < 0 ? 0 : bv;
-    dstPixels[i + 3] = av > 255 ? 255 : av < 0 ? 0 : av;
+    const isMask = helper.getIsMask(maskArray, i);
+    if (!isMask) {
+      dstPixels[i] = rv > 255 ? 255 : rv < 0 ? 0 : rv;
+      dstPixels[i + 1] = gv > 255 ? 255 : gv < 0 ? 0 : gv;
+      dstPixels[i + 2] = bv > 255 ? 255 : bv < 0 ? 0 : bv;
+      dstPixels[i + 3] = av > 255 ? 255 : av < 0 ? 0 : av;
+    } else {
+      helper.copyPixel(dstPixels, srcPixels, i);
+    }
   }
   return dstImageData;
 }

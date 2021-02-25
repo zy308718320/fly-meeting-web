@@ -1,9 +1,21 @@
 <template>
   <div class="home">
-    <img ref="logo" class="hide" alt="Vue logo" src="../assets/images/test.png">
-    <video ref="video" class="hide" src=""></video>
-    <canvas ref="canvas"></canvas>
-    <canvas ref="canvas2" @mousemove="canvasHover"></canvas>
+    <img
+      ref="logo"
+      class="hide"
+      alt="Vue logo"
+      src="../assets/images/test.png"
+    >
+    <video
+      ref="video"
+      class="hide"
+      src=""
+    />
+    <canvas ref="canvas" />
+    <canvas
+      ref="canvas2"
+      @mousemove="canvasHover"
+    />
   </div>
 </template>
 
@@ -20,7 +32,7 @@ import {
   // BrightnessContrastGimp,
   // BrightnessContrastPhotoshop,
   // Channels,
-  // ColorTransformFilter,
+  ColorTransformFilter,
   // Desaturate,
   // Dither,
   // Edge,
@@ -75,7 +87,7 @@ export default {
       const {
         logo, video, canvas, canvas2,
       } = this.$refs;
-      // const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext('2d');
       const ctx2 = canvas2.getContext('2d');
       logo.onload = () => {
         canvas2.width = logo.width;
@@ -102,9 +114,9 @@ export default {
       video.play();
       tf.getBackend();
       const net = await bodyPix.load();
-      const backgroundBlurAmount = 18;
-      const edgeBlurAmount = 8;
-      const flipHorizontal = false;
+      // const backgroundBlurAmount = 18;
+      // const edgeBlurAmount = 8;
+      // const flipHorizontal = false;
       const draw = async () => {
         if (!isSet && video.videoWidth > 0) {
           video.width = video.videoWidth;
@@ -114,9 +126,13 @@ export default {
           isSet = true;
         }
         const segmentation = await net.segmentPerson(video);
-        bodyPix.drawBokehEffect(
-          canvas, video, segmentation, backgroundBlurAmount, edgeBlurAmount, flipHorizontal,
-        );
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const videoData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const filtered = ColorTransformFilter(videoData, 2, 2, 2, 2, 0, 0, 0, 0, segmentation.data);
+        ctx.putImageData(filtered, 0, 0);
+        // bodyPix.drawBokehEffect(
+        //   video, videoEl, segmentation, backgroundBlurAmount, edgeBlurAmount, flipHorizontal,
+        // );
         requestAnimationFrame(draw);
       };
       requestAnimationFrame(draw);

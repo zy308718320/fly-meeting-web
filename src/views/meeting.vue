@@ -13,7 +13,7 @@ import adapter from 'webrtc-adapter';
 // import webwork from '@kolodny/webwork';
 import * as tf from '@tensorflow/tfjs';
 import * as bodyPix from '@tensorflow-models/body-pix';
-import { BoxBlur } from '@/utils/effect';
+import { StackBlur } from '@/utils/effect';
 
 export default {
   mounted() {
@@ -34,9 +34,6 @@ export default {
       videoEl.play();
       tf.getBackend();
       const net = await bodyPix.load();
-      // const backgroundBlurAmount = 18;
-      // const edgeBlurAmount = 8;
-      // const flipHorizontal = false;
       const draw = async () => {
         if (!isSet && videoEl.videoWidth > 0) {
           videoEl.width = videoEl.videoWidth;
@@ -48,11 +45,8 @@ export default {
         const segmentation = await net.segmentPerson(videoEl);
         ctx.drawImage(videoEl, 0, 0, video.width, video.height);
         const videoData = ctx.getImageData(0, 0, video.width, video.height);
-        const filtered = BoxBlur(videoData, 3, 3, 2, segmentation.data);
+        const filtered = StackBlur(videoData, 40, segmentation.data);
         ctx.putImageData(filtered, 0, 0);
-        // bodyPix.drawBokehEffect(
-        //   video, videoEl, segmentation, backgroundBlurAmount, edgeBlurAmount, flipHorizontal,
-        // );
         requestAnimationFrame(draw);
       };
       requestAnimationFrame(draw);
