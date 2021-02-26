@@ -8,10 +8,7 @@
 </template>
 
 <script>
-// eslint-disable-next-line no-unused-vars
-import adapter from 'webrtc-adapter';
-import handleBodyPix from '@/utils/handleBodyPix';
-import handleFilter from '@/utils/handleFilter';
+import { spawn, Worker } from 'threads';
 
 export default {
   mounted() {
@@ -30,6 +27,7 @@ export default {
       let isSet = false;
       videoEl.srcObject = await getUserMedia(userMediaOptions);
       videoEl.play();
+      const worker = await spawn(new Worker('@/workers/'));
       const draw = async () => {
         if (!isSet && videoEl.videoWidth > 0) {
           videoEl.width = videoEl.videoWidth;
@@ -38,10 +36,10 @@ export default {
           video.height = videoEl.videoHeight;
           isSet = true;
         }
-        const segmentation = await handleBodyPix(videoEl);
         ctx.drawImage(videoEl, 0, 0, video.width, video.height);
         const videoData = ctx.getImageData(0, 0, video.width, video.height);
-        const filtered = handleFilter('Binarize', [videoData, 0.5, segmentation.data]);
+        const segmentation = await worker.handleBodyPix(videoData);
+        const filtered = await worker.handleFilter('Binarize', [videoData, 0.5, segmentation.data]);
         ctx.putImageData(filtered, 0, 0);
         requestAnimationFrame(draw);
       };
@@ -51,7 +49,7 @@ export default {
 };
 </script>
 
-<style lang="less">
+<style lang="less" scoped>
 .meeting {
   position: relative;
   width: 100%;

@@ -1560,3 +1560,64 @@ export function Transpose(srcImageData) {
   }
   return dstImageData;
 }
+
+/**
+ * @param centerX 0.0 <= n <= 1.0
+ * @param centerY 0.0 <= n <= 1.0
+ * @param radius
+ * @param angle(degree)
+ * @param smooth
+ */
+export function Twril(srcImageData, centerX, centerY, radius, angle, edge, smooth) {
+  const srcPixels = srcImageData.data;
+  const srcWidth = srcImageData.width;
+  const srcHeight = srcImageData.height;
+  const dstImageData = helper.createImageData(srcWidth, srcHeight);
+  const dstPixels = dstImageData.data;
+  // convert position to px
+  centerX = srcWidth * centerX;
+  centerY = srcHeight * centerY;
+  // degree to radian
+  angle *= (Math.PI / 180);
+  const radius2 = radius * radius;
+  let dstIndex = 0;
+  let x;
+  let y;
+  let dx;
+  let dy;
+  let distance;
+  let a;
+  let tx;
+  let ty;
+  let srcIndex;
+  for (y = 0; y < srcHeight; y += 1) {
+    for (x = 0; x < srcWidth; x += 1) {
+      dx = x - centerX;
+      dy = y - centerY;
+      distance = dx * dx + dy * dy;
+      if (distance > radius2) {
+        // out of the effected area. just copy the pixel
+        helper.copyPixel(dstPixels, srcPixels, dstIndex, dstIndex);
+      } else {
+        // main formula
+        distance = Math.sqrt(distance);
+        a = Math.atan2(dy, dx) + (angle * (radius - distance)) / radius;
+        tx = centerX + distance * Math.cos(a);
+        ty = centerY + distance * Math.sin(a);
+        // copy target pixel
+        if (smooth) {
+          // bilinear
+          helper.copyBilinear(srcPixels, tx, ty, srcWidth, srcHeight, dstPixels, dstIndex, edge);
+        } else {
+          // nearest neighbor
+          // round tx, ty
+          // TODO edge actions!!
+          srcIndex = ((ty + 0.5 | 0) * srcWidth + (tx + 0.5 | 0)) << 2;
+          helper.copyPixel(dstPixels, srcPixels, srcIndex, dstIndex);
+        }
+      }
+      dstIndex += 4;
+    }
+  }
+  return dstImageData;
+}

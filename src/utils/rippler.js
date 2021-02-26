@@ -6,13 +6,6 @@ import {
   DisplacementMapFilter,
 } from '@/utils/effect';
 
-/**
- * @param centerX 0.0 <= n <= 1.0
- * @param centerY 0.0 <= n <= 1.0
- * @param radius
- * @param angle(degree)
- * @param smooth
- */
 export default class Rippler {
   constructor(source, strength, scale) {
     this.source = source;
