@@ -53,7 +53,7 @@
 
 <script>
 import { throttle } from 'lodash-es';
-import { Rippler } from '@/utils/effect';
+import Rippler from '@/utils/rippler';
 import bgImg from '@/assets/images/bg.jpg';
 
 export default {

@@ -20,44 +20,11 @@
 </template>
 
 <script>
-/* eslint-disable no-console */
-// eslint-disable-next-line no-unused-vars
+/* eslint-disable no-console, no-unused-vars */
 import adapter from 'webrtc-adapter';
-import {
-  Rippler,
-  // Binarize,
-  // BoxBlur,
-  // GaussianBlur,
-  // StackBlur,
-  // BrightnessContrastGimp,
-  // BrightnessContrastPhotoshop,
-  // Channels,
-  ColorTransformFilter,
-  // Desaturate,
-  // Dither,
-  // Edge,
-  // Emboss,
-  // Enrich,
-  // Flip,
-  // Gamma,
-  // GrayScale,
-  // HSLAdjustment,
-  // Invert,
-  // Mosaic,
-  // Oil,
-  // Posterize,
-  // Rescale,
-  // ResizeNearestNeighbor,
-  // Resize,
-  // ResizeBuiltin,
-  // Sepia,
-  // Sharpen,
-  // Solarize,
-  // Transpose,
-  // Twril,
-} from '@/utils/effect';
-import * as tf from '@tensorflow/tfjs';
-import * as bodyPix from '@tensorflow-models/body-pix';
+import Rippler from '@/utils/rippler';
+import { spawn, Thread, Worker } from 'threads';
+import handleBodyPix from '@/utils/handleBodyPix';
 
 export default {
   name: 'Home',
@@ -112,11 +79,10 @@ export default {
       video.srcObject = await getUserMedia(userMediaOptions);
       // video.srcObject = await getDisplayMedia(displayMediaOptions);
       video.play();
-      tf.getBackend();
-      const net = await bodyPix.load();
       // const backgroundBlurAmount = 18;
       // const edgeBlurAmount = 8;
       // const flipHorizontal = false;
+      const worker = await spawn(new Worker('@/workers/'));
       const draw = async () => {
         if (!isSet && video.videoWidth > 0) {
           video.width = video.videoWidth;
@@ -125,11 +91,11 @@ export default {
           canvas.height = video.videoHeight;
           isSet = true;
         }
-        const segmentation = await net.segmentPerson(video);
+        const segmentation = await handleBodyPix(video);
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const videoData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const filtered = ColorTransformFilter(videoData, 2, 2, 2, 2, 0, 0, 0, 0, segmentation.data);
-        ctx.putImageData(filtered, 0, 0);
+        const result = await worker.handleFilter('Binarize', [videoData, 0.5, segmentation.data]);
+        ctx.putImageData(result, 0, 0);
         // bodyPix.drawBokehEffect(
         //   video, videoEl, segmentation, backgroundBlurAmount, edgeBlurAmount, flipHorizontal,
         // );

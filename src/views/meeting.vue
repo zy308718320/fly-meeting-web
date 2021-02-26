@@ -10,10 +10,8 @@
 <script>
 // eslint-disable-next-line no-unused-vars
 import adapter from 'webrtc-adapter';
-// import webwork from '@kolodny/webwork';
-import * as tf from '@tensorflow/tfjs';
-import * as bodyPix from '@tensorflow-models/body-pix';
-import { StackBlur } from '@/utils/effect';
+import handleBodyPix from '@/utils/handleBodyPix';
+import handleFilter from '@/utils/handleFilter';
 
 export default {
   mounted() {
@@ -32,8 +30,6 @@ export default {
       let isSet = false;
       videoEl.srcObject = await getUserMedia(userMediaOptions);
       videoEl.play();
-      tf.getBackend();
-      const net = await bodyPix.load();
       const draw = async () => {
         if (!isSet && videoEl.videoWidth > 0) {
           videoEl.width = videoEl.videoWidth;
@@ -42,10 +38,10 @@ export default {
           video.height = videoEl.videoHeight;
           isSet = true;
         }
-        const segmentation = await net.segmentPerson(videoEl);
+        const segmentation = await handleBodyPix(videoEl);
         ctx.drawImage(videoEl, 0, 0, video.width, video.height);
         const videoData = ctx.getImageData(0, 0, video.width, video.height);
-        const filtered = StackBlur(videoData, 40, segmentation.data);
+        const filtered = handleFilter('Binarize', [videoData, 0.5, segmentation.data]);
         ctx.putImageData(filtered, 0, 0);
         requestAnimationFrame(draw);
       };

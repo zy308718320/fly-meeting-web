@@ -6,10 +6,8 @@ export default {
   context: null,
   initSampleCanvas() {
     if (!this.canvas) {
-      const canvas = document.createElement('canvas');
+      const canvas = new OffscreenCanvas(0, 0);
       const context = canvas.getContext('2d');
-      canvas.width = 0;
-      canvas.height = 0;
       this.canvas = canvas;
       this.context = context;
     }
