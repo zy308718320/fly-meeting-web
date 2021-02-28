@@ -34,16 +34,21 @@ export default {
     }
     return m;
   },
-  applyMap(src, dst, map) {
+  applyMap(src, dst, map, maskArray) {
     for (let i = 0, l = src.length; i < l; i += 4) {
-      dst[i] = map[src[i]];
-      dst[i + 1] = map[src[i + 1]];
-      dst[i + 2] = map[src[i + 2]];
-      dst[i + 3] = src[i + 3];
+      const isMask = this.getIsMask(maskArray, i);
+      if (!isMask) {
+        dst[i] = map[src[i]];
+        dst[i + 1] = map[src[i + 1]];
+        dst[i + 2] = map[src[i + 2]];
+        dst[i + 3] = src[i + 3];
+      } else {
+        this.copyPixel(dst, src, i);
+      }
     }
   },
-  mapRGB(src, dst, func) {
-    this.applyMap(src, dst, this.buildMap(func));
+  mapRGB(src, dst, func, maskArray) {
+    this.applyMap(src, dst, this.buildMap(func), maskArray);
   },
   getPixelIndex(x, y, width, height, edge) {
     if (x < 0 || x >= width || y < 0 || y >= height) {

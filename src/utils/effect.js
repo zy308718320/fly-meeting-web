@@ -665,10 +665,12 @@ export function Brightness(srcImageData, brightness) {
 
 /**
  * GIMP algorithm modified. pretty close to fireworks
+ * @param srcImageData
  * @param brightness -100 <= n <= 100
  * @param contrast -100 <= n <= 100
+ * @param maskArray
  */
-export function BrightnessContrastGimp(srcImageData, brightness, contrast) {
+export function BrightnessContrastGimp(srcImageData, brightness, contrast, maskArray) {
   const srcPixels = srcImageData.data;
   const srcWidth = srcImageData.width;
   const srcHeight = srcImageData.height;
@@ -702,7 +704,7 @@ export function BrightnessContrastGimp(srcImageData, brightness, contrast) {
       value = (value - avg) * contrast + avg;
     }
     return value + 0.5 | 0;
-  });
+  }, maskArray);
   return dstImageData;
 }
 
@@ -712,7 +714,7 @@ export function BrightnessContrastGimp(srcImageData, brightness, contrast) {
  * @param brightness -100 <= n <= 100
  * @param contrast -100 <= n <= 100
  */
-export function BrightnessContrastPhotoshop(srcImageData, brightness, contrast) {
+export function BrightnessContrastPhotoshop(srcImageData, brightness, contrast, maskArray) {
   const srcPixels = srcImageData.data;
   const srcWidth = srcImageData.width;
   const srcHeight = srcImageData.height;
@@ -724,7 +726,7 @@ export function BrightnessContrastPhotoshop(srcImageData, brightness, contrast) 
     value *= brightness;
     value = (value - 127.5) * contrast + 127.5;
     return value + 0.5 | 0;
-  });
+  }, maskArray);
   return dstImageData;
 }
 
@@ -850,7 +852,7 @@ export function CropBuiltin(srcImageData, x, y, width, height) {
 /**
  * sets to the average of the highest and lowest contrast
  */
-export function Desaturate(srcImageData) {
+export function Desaturate(srcImageData, maskArray) {
   const srcPixels = srcImageData.data;
   const srcWidth = srcImageData.width;
   const srcHeight = srcImageData.height;
@@ -864,9 +866,13 @@ export function Desaturate(srcImageData) {
     const max = (r > g) ? (r > b) ? r : b : (g > b) ? g : b;
     const min = (r < g) ? (r < b) ? r : b : (g < b) ? g : b;
     const avg = ((max + min) / 2) + 0.5 | 0;
-
-    dstPixels[i] = dstPixels[i + 1] = dstPixels[i + 2] = avg;
-    dstPixels[i + 3] = srcPixels[i + 3];
+    const isMask = helper.getIsMask(maskArray, i);
+    if (!isMask) {
+      dstPixels[i] = dstPixels[i + 1] = dstPixels[i + 2] = avg;
+      dstPixels[i + 3] = srcPixels[i + 3];
+    } else {
+      helper.copyPixel(dstPixels, srcPixels, i);
+    }
   }
   return dstImageData;
 }
@@ -1048,29 +1054,29 @@ export function Dither(srcImageData, levels) {
   return dstImageData;
 }
 
-export function Edge(srcImageData) {
+export function Edge(srcImageData, maskArray) {
   // pretty close to Fireworks 'Find Edges' effect
   return ConvolutionFilter(srcImageData, 3, 3, [
     -1, -1, -1,
     -1, 8, -1,
     -1, -1, -1,
-  ]);
+  ], null, null, null, null, null, null, maskArray);
 }
 
-export function Emboss(srcImageData) {
+export function Emboss(srcImageData, maskArray) {
   return ConvolutionFilter(srcImageData, 3, 3, [
     -2, -1, 0,
     -1, 1, 1,
     0, 1, 2,
-  ]);
+  ], null, null, null, null, null, null, maskArray);
 }
 
-export function Enrich(srcImageData) {
+export function Enrich(srcImageData, maskArray) {
   return ConvolutionFilter(srcImageData, 3, 3, [
     0, -2, 0,
     -2, 20, -2,
     0, -2, 0,
-  ], 10, -40);
+  ], 10, -40, null, null, null, null, maskArray);
 }
 
 export function Flip(srcImageData, vertical) {
@@ -1097,7 +1103,7 @@ export function Flip(srcImageData, vertical) {
   return dstImageData;
 }
 
-export function Gamma(srcImageData, gamma) {
+export function Gamma(srcImageData, gamma, maskArray) {
   const srcPixels = srcImageData.data;
   const srcWidth = srcImageData.width;
   const srcHeight = srcImageData.height;
@@ -1106,11 +1112,11 @@ export function Gamma(srcImageData, gamma) {
   helper.mapRGB(srcPixels, dstPixels, (value) => {
     value = 255 * ((value / 255) ** (1 / gamma)) + 0.5;
     return value > 255 ? 255 : value + 0.5 | 0;
-  });
+  }, maskArray);
   return dstImageData;
 }
 
-export function GrayScale(srcImageData) {
+export function GrayScale(srcImageData, maskArray) {
   const srcPixels = srcImageData.data;
   const srcWidth = srcImageData.width;
   const srcHeight = srcImageData.height;
@@ -1120,18 +1126,25 @@ export function GrayScale(srcImageData) {
   for (let i = 0; i < srcLength; i += 4) {
     const intensity = (srcPixels[i] * 19595 + srcPixels[i + 1]
       * 38470 + srcPixels[i + 2] * 7471) >> 16;
-    dstPixels[i] = dstPixels[i + 1] = dstPixels[i + 2] = intensity;
-    dstPixels[i + 3] = srcPixels[i + 3];
+    const isMask = helper.getIsMask(maskArray, i);
+    if (!isMask) {
+      dstPixels[i] = dstPixels[i + 1] = dstPixels[i + 2] = intensity;
+      dstPixels[i + 3] = srcPixels[i + 3];
+    } else {
+      helper.copyPixel(dstPixels, srcPixels, i);
+    }
   }
   return dstImageData;
 }
 
 /**
+ * @param srcImageData
  * @param hueDelta  -180 <= n <= 180
  * @param satDelta  -100 <= n <= 100
  * @param lightness -100 <= n <= 100
+ * @param maskArray
  */
-export function HSLAdjustment(srcImageData, hueDelta, satDelta, lightness) {
+export function HSLAdjustment(srcImageData, hueDelta, satDelta, lightness, maskArray) {
   const srcPixels = srcImageData.data;
   const srcWidth = srcImageData.width;
   const srcHeight = srcImageData.height;
@@ -1175,21 +1188,26 @@ export function HSLAdjustment(srcImageData, hueDelta, satDelta, lightness) {
     // convert back to rgb
     rgb = hslToRgb(h, s, l);
     const [r, g, b] = rgb;
-    dstPixels[i] = r;
-    dstPixels[i + 1] = g;
-    dstPixels[i + 2] = b;
-    dstPixels[i + 3] = srcPixels[i + 3];
+    const isMask = helper.getIsMask(maskArray, i);
+    if (!isMask) {
+      dstPixels[i] = r;
+      dstPixels[i + 1] = g;
+      dstPixels[i + 2] = b;
+      dstPixels[i + 3] = srcPixels[i + 3];
+    } else {
+      helper.copyPixel(dstPixels, srcPixels, i);
+    }
   }
   return dstImageData;
 }
 
-export function Invert(srcImageData) {
+export function Invert(srcImageData, maskArray) {
   const srcPixels = srcImageData.data;
   const srcWidth = srcImageData.width;
   const srcHeight = srcImageData.height;
   const dstImageData = helper.createImageData(srcWidth, srcHeight);
   const dstPixels = dstImageData.data;
-  helper.mapRGB(srcPixels, dstPixels, (value) => 255 - value);
+  helper.mapRGB(srcPixels, dstPixels, (value) => 255 - value, maskArray);
   return dstImageData;
 }
 
@@ -1270,7 +1288,7 @@ export function Mosaic(srcImageData, blockSize, maskArray) {
  * @param range  1 <= n <= 5
  * @param levels 1 <= n <= 256
  */
-export function Oil(srcImageData, range, levels) {
+export function Oil(srcImageData, range, levels, maskArray) {
   const srcPixels = srcImageData.data;
   const srcWidth = srcImageData.width;
   const srcHeight = srcImageData.height;
@@ -1344,10 +1362,15 @@ export function Oil(srcImageData, range, levels) {
           b = i;
         }
       }
-      dstPixels[index] = rt[r] / rh[r] | 0;
-      dstPixels[index + 1] = gt[g] / gh[g] | 0;
-      dstPixels[index + 2] = bt[b] / bh[b] | 0;
-      dstPixels[index + 3] = srcPixels[index + 3];
+      const isMask = helper.getIsMask(maskArray, index);
+      if (!isMask) {
+        dstPixels[index] = rt[r] / rh[r] | 0;
+        dstPixels[index + 1] = gt[g] / gh[g] | 0;
+        dstPixels[index + 2] = bt[b] / bh[b] | 0;
+        dstPixels[index + 3] = srcPixels[index + 3];
+      } else {
+        helper.copyPixel(dstPixels, srcPixels, index);
+      }
       index += 4;
     }
   }
@@ -1371,9 +1394,11 @@ export function OpacityFilter(srcImageData, opacity) {
 }
 
 /**
+ * @param srcImageData
  * @param levels 2 <= n <= 255
+ * @param maskArray
  */
-export function Posterize(srcImageData, levels) {
+export function Posterize(srcImageData, levels, maskArray) {
   const srcPixels = srcImageData.data;
   const srcWidth = srcImageData.width;
   const srcHeight = srcImageData.height;
@@ -1388,7 +1413,6 @@ export function Posterize(srcImageData, levels) {
   for (i = 0; i < levels; i += 1) {
     levelMap[i] = (255 * i) / levelsMinus1;
   }
-
   helper.mapRGB(srcPixels, dstPixels, () => {
     const ret = levelMap[j];
     k += levels;
@@ -1397,14 +1421,16 @@ export function Posterize(srcImageData, levels) {
       j += 1;
     }
     return ret;
-  });
+  }, maskArray);
   return dstImageData;
 }
 
 /**
+ * @param srcImageData
  * @param scale 0.0 <= n <= 5.0
+ * @param maskArray
  */
-export function Rescale(srcImageData, scale) {
+export function Rescale(srcImageData, scale, maskArray) {
   const srcPixels = srcImageData.data;
   const srcWidth = srcImageData.width;
   const srcHeight = srcImageData.height;
@@ -1413,7 +1439,7 @@ export function Rescale(srcImageData, scale) {
   helper.mapRGB(srcPixels, dstPixels, (value) => {
     value *= scale;
     return (value > 255) ? 255 : value + 0.5 | 0;
-  });
+  }, maskArray);
   return dstImageData;
 }
 
@@ -1492,7 +1518,7 @@ export function ResizeBuiltin(srcImageData, width, height) {
   return dstImageData;
 }
 
-export function Sepia(srcImageData) {
+export function Sepia(srcImageData, maskArray) {
   const srcPixels = srcImageData.data;
   const srcWidth = srcImageData.width;
   const srcHeight = srcImageData.height;
@@ -1510,34 +1536,41 @@ export function Sepia(srcImageData) {
     const rv = r * 0.393 + g * 0.769 + b * 0.189;
     const gv = r * 0.349 + g * 0.686 + b * 0.168;
     const bv = r * 0.272 + g * 0.534 + b * 0.131;
-    dstPixels[i] = rv > 255 ? 255 : rv < 0 ? 0 : rv + 0.5 | 0;
-    dstPixels[i + 1] = gv > 255 ? 255 : gv < 0 ? 0 : gv + 0.5 | 0;
-    dstPixels[i + 2] = bv > 255 ? 255 : bv < 0 ? 0 : bv + 0.5 | 0;
-    dstPixels[i + 3] = srcPixels[i + 3];
+    const isMask = helper.getIsMask(maskArray, i);
+    if (!isMask) {
+      dstPixels[i] = rv > 255 ? 255 : rv < 0 ? 0 : rv + 0.5 | 0;
+      dstPixels[i + 1] = gv > 255 ? 255 : gv < 0 ? 0 : gv + 0.5 | 0;
+      dstPixels[i + 2] = bv > 255 ? 255 : bv < 0 ? 0 : bv + 0.5 | 0;
+      dstPixels[i + 3] = srcPixels[i + 3];
+    } else {
+      helper.copyPixel(dstPixels, srcPixels, i);
+    }
   }
   return dstImageData;
 }
 
 /**
+ * @param srcImageData
  * @param factor 1 <= n
+ * @param maskArray
  */
-export function Sharpen(srcImageData, factor) {
+export function Sharpen(srcImageData, factor, maskArray) {
   // Convolution formula from VIGRA
   return ConvolutionFilter(srcImageData, 3, 3, [
     -factor / 16, -factor / 8, -factor / 16,
     -factor / 8, factor * 0.75 + 1, -factor / 8,
     -factor / 16, -factor / 8, -factor / 16,
-  ]);
+  ], null, null, null, null, null, null, maskArray);
 }
 
-export function Solarize(srcImageData) {
+export function Solarize(srcImageData, maskArray) {
   const srcPixels = srcImageData.data;
   const srcWidth = srcImageData.width;
   const srcHeight = srcImageData.height;
   const dstImageData = helper.createImageData(srcWidth, srcHeight);
   const dstPixels = dstImageData.data;
   helper.mapRGB(srcPixels, dstPixels,
-    (value) => (value > 127 ? (value - 127.5) * 2 : (127.5 - value) * 2));
+    (value) => (value > 127 ? (value - 127.5) * 2 : (127.5 - value) * 2), maskArray);
   return dstImageData;
 }
 

@@ -21,6 +21,7 @@
 
 <script>
 import Rippler from '@/utils/rippler';
+import maskFilterDefault from '@/config/maskFilterDefault';
 import userVideo from '@/components/userVideo.vue';
 
 export default {
@@ -33,8 +34,8 @@ export default {
       rippler: null,
       videoWidth: 640,
       videoHeight: 480,
-      filterType: 'Binarize',
-      filterParam: [0.5],
+      filterType: 'BrightnessContrastPhotoshop',
+      filterParam: [],
     };
   },
   mounted() {
@@ -42,6 +43,7 @@ export default {
   },
   methods: {
     init() {
+      this.filterParam = maskFilterDefault[this.filterType];
       this.run();
     },
     async run() {
