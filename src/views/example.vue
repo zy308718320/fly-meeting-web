@@ -20,9 +20,9 @@
 </template>
 
 <script>
-import Rippler from '@/utils/rippler';
 import maskFilterDefault from '@/config/maskFilterDefault';
 import userVideo from '@/components/userVideo.vue';
+import { spawn, Thread, Worker } from 'threads';
 
 export default {
   components: {
@@ -30,8 +30,10 @@ export default {
   },
   data() {
     return {
+      worker: null,
       canvas: null,
-      rippler: null,
+      mouseX: null,
+      mouseY: null,
       videoWidth: 640,
       videoHeight: 480,
       filterType: 'BrightnessContrastPhotoshop',
@@ -41,14 +43,15 @@ export default {
   mounted() {
     this.init();
   },
+  async beforeUnmount() {
+    await Thread.terminate(this.worker);
+  },
   methods: {
-    init() {
+    async init() {
       this.filterParam = maskFilterDefault[this.filterType];
-      this.videoWidth = window.innerWidth;
-      this.videoHeight = window.innerHeight;
       this.run();
     },
-    async run() {
+    run() {
       // const displayMediaOptions = {
       //   video: {
       //     cursor: 'always',
@@ -60,30 +63,35 @@ export default {
         logo, canvas,
       } = this.$refs;
       const ctx = canvas.getContext('2d');
-      logo.onload = () => {
+      logo.onload = async () => {
+        this.worker = await spawn(new Worker('@/workers/'));
         canvas.width = logo.width;
         canvas.height = logo.height;
         ctx.drawImage(logo, 0, 0, canvas.width, canvas.height);
-        const logoData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const rippler = new Rippler(logoData, 60, 8);
-        rippler.onUpdate = (target) => {
-          ctx.putImageData(target, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const draw = async () => {
+          const result = await this.worker.handleRippler(this.mouseX, this.mouseY, 8, 1, {
+            source: imageData,
+            strength: 60,
+            scale: 8,
+          });
+          if (result) {
+            ctx.putImageData(result, 0, 0);
+          }
+          requestAnimationFrame(draw);
         };
+        requestAnimationFrame(draw);
         if (!this.canvas) {
           this.canvas = canvas;
-        }
-        if (!this.rippler) {
-          this.rippler = rippler;
         }
       };
       // const { getDisplayMedia } = navigator.mediaDevices;
       // video.srcObject = await getDisplayMedia(displayMediaOptions);
     },
     canvasHover(e) {
-      if (this.canvas && this.rippler) {
-        const mouseX = e.pageX - this.canvas.offsetLeft;
-        const mouseY = e.pageY - this.canvas.offsetTop;
-        this.rippler.drawRipple(mouseX, mouseY, 8, 1);
+      if (this.canvas) {
+        this.mouseX = e.pageX - this.canvas.offsetLeft;
+        this.mouseY = e.pageY - this.canvas.offsetTop;
       }
     },
   },

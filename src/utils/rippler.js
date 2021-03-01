@@ -12,15 +12,15 @@ export default class Rippler {
     this.strength = strength;
     this.scaleInv = 1 / scale;
     // create the (downscaled) buffers and final (upscaled) image data, sizes depend on scale
-    this.buffer1 = document.createElement('canvas').getContext('2d');
+    this.buffer1 = new OffscreenCanvas(0, 0).getContext('2d');
     this.buffer1.canvas.width = source.width * this.scaleInv;
     this.buffer1.canvas.height = source.height * this.scaleInv;
     this.buffer1.fillStyle = '#000000';
     this.buffer1.fillRect(0, 0, this.buffer1.canvas.width, this.buffer1.canvas.height);
-    this.buffer2 = document.createElement('canvas').getContext('2d');
+    this.buffer2 = new OffscreenCanvas(0, 0).getContext('2d');
     this.buffer2.canvas.width = source.width * this.scaleInv;
     this.buffer2.canvas.height = source.height * this.scaleInv;
-    this.defData = document.createElement('canvas').getContext('2d');
+    this.defData = new OffscreenCanvas(0, 0).getContext('2d');
     this.defData.canvas.width = source.width;
     this.defData.canvas.height = source.height;
     this.defData.fillStyle = '#7f7f7f';
@@ -28,12 +28,6 @@ export default class Rippler {
     const correctedScaleX = this.defData.canvas.width / this.buffer1.canvas.width;
     const correctedScaleY = this.defData.canvas.height / this.buffer1.canvas.height;
     this.defData.scale(correctedScaleX, correctedScaleY);
-    // Create a frame-based loop to update the ripples
-    const draw = () => {
-      this.handleEnterFrame();
-      requestAnimationFrame(draw);
-    };
-    requestAnimationFrame(draw);
   }
 
   drawRipple(x, y, size, alpha) {
@@ -48,6 +42,7 @@ export default class Rippler {
     const dh = dw;
     this.buffer1.fillStyle = `rgb(0, 0, ${intensity})`;
     this.buffer1.fillRect(dx, dy, dw, dh);
+    return this.handleEnterFrame();
   }
 
   handleEnterFrame() {
@@ -71,9 +66,7 @@ export default class Rippler {
       0, 0, 2, 2, this.strength, this.strength, 2);
     // switch buffers 1 and 2
     this.switchBuffers();
-    if (this.onUpdate) {
-      this.onUpdate(result);
-    }
+    return result;
   }
 
   switchBuffers() {

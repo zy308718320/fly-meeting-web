@@ -52,15 +52,16 @@
 </template>
 
 <script>
-import { throttle } from 'lodash-es';
-import Rippler from '@/utils/rippler';
+import { spawn, Thread, Worker } from 'threads';
 import bgImg from '@/assets/images/bg.jpg';
 
 export default {
   data() {
     return {
       canvas: null,
-      rippler: null,
+      worker: null,
+      mouseX: null,
+      mouseY: null,
       visible: false,
       isJoin: false,
       form: {
@@ -69,8 +70,12 @@ export default {
       },
     };
   },
-  mounted() {
+  async mounted() {
+    this.worker = await spawn(new Worker('@/workers/'));
     this.play();
+  },
+  async beforeUnmount() {
+    await Thread.terminate(this.worker);
   },
   methods: {
     play() {
@@ -82,27 +87,28 @@ export default {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
         ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
-        const logoData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const rippler = new Rippler(logoData, 60, 8);
-        rippler.onUpdate = (target) => {
-          ctx.putImageData(target, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const draw = async () => {
+          const result = await this.worker.handleRippler(this.mouseX, this.mouseY, 8, 1, {
+            source: imageData,
+            strength: 60,
+            scale: 8,
+          });
+          if (result) {
+            ctx.putImageData(result, 0, 0);
+          }
+          requestAnimationFrame(draw);
         };
+        requestAnimationFrame(draw);
         if (!this.canvas) {
           this.canvas = canvas;
         }
-        if (!this.rippler) {
-          this.rippler = rippler;
-        }
       };
     },
-    canvasHover(e) {
-      if (this.canvas && this.rippler) {
-        const mouseX = e.pageX - this.canvas.offsetLeft;
-        const mouseY = e.pageY - this.canvas.offsetTop;
-        const drawRipple = () => {
-          this.rippler.drawRipple(mouseX, mouseY, 8, 1);
-        };
-        throttle(drawRipple, 30)();
+    async canvasHover(e) {
+      if (this.canvas) {
+        this.mouseX = e.pageX - this.canvas.offsetLeft;
+        this.mouseY = e.pageY - this.canvas.offsetTop;
       }
     },
     createMeeting() {
