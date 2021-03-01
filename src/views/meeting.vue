@@ -1,49 +1,38 @@
 <template>
   <div class="meeting">
-    <canvas
-      ref="video"
-      class="video"
+    <user-video
+      :width="videoWidth"
+      :height="videoHeight"
+      :filter-type="filterType"
+      :filter-param="filterParam"
     />
   </div>
 </template>
 
 <script>
-import { spawn, Worker } from 'threads';
+import maskFilterDefault from '@/config/maskFilterDefault';
+import userVideo from '@/components/userVideo.vue';
 
 export default {
+  components: {
+    userVideo,
+  },
+  data() {
+    return {
+      videoWidth: 640,
+      videoHeight: 480,
+      filterType: 'Edge',
+      filterParam: [],
+    };
+  },
   mounted() {
-    this.play();
+    this.init();
   },
   methods: {
-    async play() {
-      const userMediaOptions = {
-        video: true,
-        audio: false,
-      };
-      const { video } = this.$refs;
-      const ctx = video.getContext('2d');
-      const videoEl = document.createElement('video');
-      const { getUserMedia } = navigator.mediaDevices;
-      let isSet = false;
-      videoEl.srcObject = await getUserMedia(userMediaOptions);
-      videoEl.play();
-      const worker = await spawn(new Worker('@/workers/'));
-      const draw = async () => {
-        if (!isSet && videoEl.videoWidth > 0) {
-          videoEl.width = videoEl.videoWidth;
-          videoEl.height = videoEl.videoHeight;
-          video.width = videoEl.videoWidth;
-          video.height = videoEl.videoHeight;
-          isSet = true;
-        }
-        ctx.drawImage(videoEl, 0, 0, video.width, video.height);
-        const videoData = ctx.getImageData(0, 0, video.width, video.height);
-        const segmentation = await worker.handleBodyPix(videoData);
-        const filtered = await worker.handleFilter('Binarize', [videoData, 0.5, segmentation.data]);
-        ctx.putImageData(filtered, 0, 0);
-        requestAnimationFrame(draw);
-      };
-      requestAnimationFrame(draw);
+    init() {
+      this.filterParam = maskFilterDefault[this.filterType];
+      this.videoWidth = window.innerWidth;
+      this.videoHeight = window.innerHeight;
     },
   },
 };
@@ -54,15 +43,5 @@ export default {
   position: relative;
   width: 100%;
   height: 100vh;
-}
-.video {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  left: 0;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  z-index: 1;
 }
 </style>

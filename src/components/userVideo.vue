@@ -1,7 +1,9 @@
 <template>
-  <div>
+  <div class="video-wrap">
     <video
       ref="video"
+      :width="width"
+      :height="height"
       class="hide"
     />
     <canvas
@@ -56,9 +58,6 @@ export default {
   },
   methods: {
     init() {
-      const { video } = this.$refs;
-      video.width = this.videoWidth;
-      video.height = this.videoHeight;
       this.play();
     },
     async play() {
@@ -76,10 +75,6 @@ export default {
       this.worker = worker;
       const draw = async () => {
         if (!isSet && video.videoWidth > 0) {
-          video.width = video.videoWidth;
-          video.height = video.videoHeight;
-          videoCanvas.width = video.videoWidth;
-          videoCanvas.height = video.videoHeight;
           shadowCanvas.width = videoCanvas.width;
           shadowCanvas.height = videoCanvas.height;
           isSet = true;
@@ -101,3 +96,10 @@ export default {
   },
 };
 </script>
+
+<style lang="less" scoped>
+.video-wrap {
+  position: relative;
+  overflow: hidden;
+}
+</style>

@@ -44,6 +44,8 @@ export default {
   methods: {
     init() {
       this.filterParam = maskFilterDefault[this.filterType];
+      this.videoWidth = window.innerWidth;
+      this.videoHeight = window.innerHeight;
       this.run();
     },
     async run() {

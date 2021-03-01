@@ -7,6 +7,7 @@ import store from './store';
 import 'webrtc-adapter';
 import 'element-plus/lib/theme-chalk/index.css';
 import '@/assets/styles/common.less';
+import './registerServiceWorker';
 
 createApp(App).use(store).use(router).use(ElementPlus)
   .mount('#app');
