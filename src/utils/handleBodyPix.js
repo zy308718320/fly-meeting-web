@@ -3,10 +3,10 @@ import * as bodyPix from '@tensorflow-models/body-pix';
 
 let net = null;
 
-export default async function (videoData) {
+export default async function (videoData, loadConfigs, segmentConfigs) {
   if (!net) {
     tf.getBackend();
-    net = await bodyPix.load();
+    net = await bodyPix.load(loadConfigs);
   }
-  return net.segmentPerson(videoData);
+  return net.segmentPerson(videoData, segmentConfigs);
 }

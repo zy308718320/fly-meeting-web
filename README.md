@@ -1,4 +1,4 @@
-# web-meeting
+# fly-meeting-web
 
 ## Project setup
 ```

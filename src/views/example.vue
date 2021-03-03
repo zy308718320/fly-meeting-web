@@ -20,7 +20,7 @@
 </template>
 
 <script>
-import maskFilterDefault from '@/config/maskFilterDefault';
+import maskFilterDefault from '@/configs/maskFilterDefault';
 import userVideo from '@/components/userVideo.vue';
 import { spawn, Thread, Worker } from 'threads';
 

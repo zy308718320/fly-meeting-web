@@ -1,39 +1,15 @@
 <template>
   <div class="meeting">
-    <user-video
-      :width="videoWidth"
-      :height="videoHeight"
-      :filter-type="filterType"
-      :filter-param="filterParam"
-    />
+    <user-video-box />
   </div>
 </template>
 
 <script>
-import maskFilterDefault from '@/config/maskFilterDefault';
-import userVideo from '@/components/userVideo.vue';
+import userVideoBox from '@/components/userVideoBox.vue';
 
 export default {
   components: {
-    userVideo,
-  },
-  data() {
-    return {
-      videoWidth: 640,
-      videoHeight: 480,
-      filterType: 'Edge',
-      filterParam: [],
-    };
-  },
-  mounted() {
-    this.init();
-  },
-  methods: {
-    init() {
-      this.filterParam = maskFilterDefault[this.filterType];
-      this.videoWidth = window.innerWidth;
-      this.videoHeight = window.innerHeight;
-    },
+    userVideoBox,
   },
 };
 </script>
