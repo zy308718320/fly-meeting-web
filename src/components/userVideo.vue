@@ -88,35 +88,40 @@ export default {
         video, videoCanvas,
       } = this.$refs;
       const { getUserMedia } = navigator.mediaDevices;
-      video.srcObject = await getUserMedia(this.userMediaOptions);
-      video.play();
       const ctx = videoCanvas.getContext('2d');
       const shadowCanvas = helper.getSampleCanvas();
       const shadowCtx = helper.getSampleContext();
+      video.srcObject = await getUserMedia(this.userMediaOptions);
+      video.play();
+      video.onloadeddata = () => {
+        this.srcVideoWidth = video.videoWidth;
+        this.srcVideoHeight = video.videoHeight;
+        this.resize();
+      };
       const worker = await spawn(new Worker('@/workers/'));
       this.worker = worker;
-      this.srcVideoWidth = video.videoWidth;
-      this.srcVideoHeight = video.videoHeight;
-      this.resize();
       const draw = async () => {
         if (!this.isSet && video.videoWidth > 0) {
           shadowCanvas.width = videoCanvas.width;
           shadowCanvas.height = videoCanvas.height;
           this.isSet = true;
         }
+        let resultVideo = video;
+        shadowCtx.drawImage(resultVideo, 0, 0, videoCanvas.width, videoCanvas.height);
+        resultVideo = shadowCtx.getImageData(0, 0, videoCanvas.width, videoCanvas.height);
+        // 美颜磨皮（双边滤波）
+        resultVideo = await worker.handleFilter('Bilateral', [resultVideo, 3, 12]);
         if (this.filterType) {
-          shadowCtx.drawImage(video, 0, 0, videoCanvas.width, videoCanvas.height);
-          const videoData = shadowCtx.getImageData(0, 0, videoCanvas.width, videoCanvas.height);
           const segmentation = await worker.handleBodyPix(
-            videoData,
+            resultVideo,
             loadConfigs,
             segmentConfigs,
           );
-          const result = await worker.handleFilter(this.filterType,
-            [videoData, ...this.filterParam, segmentation.data]);
-          ctx.putImageData(result, 0, 0);
+          resultVideo = await worker.handleFilter(this.filterType,
+            [resultVideo, ...this.filterParam, segmentation.data]);
+          ctx.putImageData(resultVideo, 0, 0);
         } else {
-          ctx.drawImage(video, 0, 0, videoCanvas.width, videoCanvas.height);
+          ctx.drawImage(resultVideo, 0, 0, videoCanvas.width, videoCanvas.height);
         }
         requestAnimationFrame(draw);
       };

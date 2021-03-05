@@ -178,8 +178,12 @@ export default {
     return [h, s, l];
   },
   hslToRgb(h, s, l) {
-    let m1; let m2; let hue;
-    let r; let g; let b;
+    let m1;
+    let m2;
+    let hue;
+    let r;
+    let g;
+    let b;
     let rgb = [];
 
     if (s === 0) {
@@ -214,6 +218,41 @@ export default {
       }
     }
     return rgb;
+  },
+  getIntensities(srcImageData) {
+    const result = new Float32Array(srcImageData.width * srcImageData.height);
+    for (let i = 0; i < result.length; i += 1) {
+      const index = i * 4;
+      // 0.2126 * R + 0.7152 * G + 0.0722 * B
+      result[i] = 0.2126 * srcImageData.data[index]
+        + 0.7152 * srcImageData.data[index + 1]
+        + 0.0722 * srcImageData.data[index + 2];
+    }
+    return result;
+  },
+  gaussianKernel(sigma = 1, w = 13, h) {
+    const result = {};
+    result.w = w;
+    result.h = h || w;
+    result.kern = new Float32Array(result.w * result.h);
+    result.cx = Math.floor(result.w / 2);
+    result.cy = Math.floor(result.h / 2);
+    result.sigma = sigma;
+    for (let y = 0; y < result.h; y += 1) {
+      for (let x = 0; x < result.w; x += 1) {
+        const rx = (x - result.cx);
+        const ry = (y - result.cy);
+        const d2 = rx * rx + ry * ry;
+        result.kern[y * result.w + x] = this.gaussianVal(d2, sigma);
+      }
+    }
+    return result;
+  },
+  gaussianVal(d, sigma) {
+    return Math.exp(-d / (2 * sigma * sigma));
+  },
+  gaussianWhats(x, y, kern, cx, cy, w) {
+    return kern[(y + cy) * w + x + cx];
   },
   getIsMask(maskArray, index) {
     let isMask = false;

@@ -36,7 +36,7 @@ export default {
       mouseY: null,
       videoWidth: 640,
       videoHeight: 480,
-      filterType: 'BrightnessContrastPhotoshop',
+      filterType: 'Mosaic',
       filterParam: [],
     };
   },

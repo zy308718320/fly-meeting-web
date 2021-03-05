@@ -305,6 +305,7 @@ export function BoxBlur(srcImageData, hRadius, vRadius, quality) {
       srcIndex += width;
     }
   }
+
   const srcPixels = srcImageData.data;
   const srcWidth = srcImageData.width;
   const srcHeight = srcImageData.height;
@@ -390,6 +391,7 @@ export function GaussianBlur(srcImageData, strength, maskArray) {
  * Stack Blur Algorithm by Mario Klingemann <mario@quasimondo.com>
  * @see http://incubator.quasimondo.com/processing/fast_blur_deluxe.php
  */
+
 /*
 Copyright (c) 2010 Mario Klingemann
 
@@ -449,6 +451,7 @@ export function StackBlur(srcImageData, radius) {
     24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
     24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
     24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24];
+
   function BlurStack() {
     this.r = 0;
     this.g = 0;
@@ -456,6 +459,7 @@ export function StackBlur(srcImageData, radius) {
     this.a = 0;
     this.next = null;
   }
+
   const srcWidth = srcImageData.width;
   const srcHeight = srcImageData.height;
   const dstImageData = Clone(srcImageData);
@@ -713,6 +717,7 @@ export function BrightnessContrastGimp(srcImageData, brightness, contrast, maskA
  * @param srcImageData
  * @param brightness -100 <= n <= 100
  * @param contrast -100 <= n <= 100
+ * @param maskArray
  */
 export function BrightnessContrastPhotoshop(srcImageData, brightness, contrast, maskArray) {
   const srcPixels = srcImageData.data;
@@ -941,6 +946,7 @@ export function DisplacementMapFilter(
 
 /**
  * Floyd-Steinberg algorithm
+ * @param srcImageData
  * @param levels 2 <= n <= 255
  */
 export function Dither(srcImageData, levels) {
@@ -1285,8 +1291,11 @@ export function Mosaic(srcImageData, blockSize, maskArray) {
 }
 
 /**
+ * @param srcImageData
  * @param range  1 <= n <= 5
+ * @param maskArray
  * @param levels 1 <= n <= 256
+ * @param maskArray
  */
 export function Oil(srcImageData, range, levels, maskArray) {
   const srcPixels = srcImageData.data;
@@ -1595,10 +1604,12 @@ export function Transpose(srcImageData) {
 }
 
 /**
+ * @param srcImageData
  * @param centerX 0.0 <= n <= 1.0
  * @param centerY 0.0 <= n <= 1.0
  * @param radius
  * @param angle(degree)
+ * @param edge
  * @param smooth
  */
 export function Twril(srcImageData, centerX, centerY, radius, angle, edge, smooth) {
@@ -1650,6 +1661,86 @@ export function Twril(srcImageData, centerX, centerY, radius, angle, edge, smoot
         }
       }
       dstIndex += 4;
+    }
+  }
+  return dstImageData;
+}
+
+/*
+
+Bilateral Filter. Brute force algorithm
+Cody Smith 2014
+
+The MIT License (MIT)
+
+Copyright (c) 2014 Redfish Group and Cody Smith
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+*/
+export function Bilateral(srcImageData, sigma, kernelsize) {
+  const srcPixels = srcImageData.data;
+  const srcWidth = srcImageData.width;
+  const srcHeight = srcImageData.height;
+  const dstImageData = helper.createImageData(srcWidth, srcHeight);
+  const dstPixels = dstImageData.data;
+  const intensities = helper.getIntensities(srcImageData);
+  const kernel = helper.gaussianKernel(sigma, kernelsize);
+  for (let y = 0; y < srcHeight; y += 1) {
+    for (let x = 0; x < srcWidth; x += 1) {
+      const i = y * srcWidth + x;
+      const w1 = intensities[i];
+      let normFactor = 0;
+      let wout = 0;
+      const rgb = [0.00000001, 0.0000001, 0.000000001];
+      for (let y2 = -kernel.cy + 1; y2 < kernel.cy; y2 += 1) {
+        for (
+          let x2 = -kernel.cx + 1;
+          x2 < kernel.cx;
+          x2 += 1
+        ) {
+          if (
+            y + y2 > 0
+            && x + x2 > 0
+            && y + y2 < srcHeight
+            && x + x2 < srcWidth
+          ) {
+            const i2 = (y + y2) * srcWidth + (x + x2);
+            const w2 = intensities[i2];
+            const distI = Math.sqrt((w1 - w2) ** 2);
+            const dw = helper.gaussianVal(distI, kernel.sigma);
+            const weight = helper.gaussianWhats(x2, y2, kernel.kern, kernel.cx, kernel.cy, kernel.w) * dw;
+            normFactor += weight;
+            wout += weight * w2;
+            rgb[0] += weight * srcPixels[4 * i2];
+            rgb[1] += weight * srcPixels[4 * i2 + 1];
+            rgb[2] += weight * srcPixels[4 * i2 + 2];
+          }
+        }
+      }
+      normFactor = Math.max(0.00001, Math.abs(normFactor));
+      wout = wout / normFactor;
+      const i4 = 4 * i;
+      dstPixels[i4] = rgb[0] / normFactor;
+      dstPixels[i4 + 1] = rgb[1] / normFactor;
+      dstPixels[i4 + 2] = rgb[2] / normFactor;
+      dstPixels[i4 + 3] = srcPixels[i4 + 3];
     }
   }
   return dstImageData;

@@ -29,4 +29,5 @@ export default {
   Solarize: [],
   Transpose: [],
   Twril: [0.5, 0.5, 100, 360, 0, true],
+  Bilateral: [4, 16],
 };
