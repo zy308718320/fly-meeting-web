@@ -110,7 +110,7 @@ export default {
         shadowCtx.drawImage(resultVideo, 0, 0, videoCanvas.width, videoCanvas.height);
         resultVideo = shadowCtx.getImageData(0, 0, videoCanvas.width, videoCanvas.height);
         // 美颜磨皮（双边滤波）
-        resultVideo = await worker.handleFilter('Bilateral', [resultVideo, 3, 12]);
+        // resultVideo = await worker.handleFilter('Bilateral', [resultVideo, 3, 12]);
         if (this.filterType) {
           const segmentation = await worker.handleBodyPix(
             resultVideo,
