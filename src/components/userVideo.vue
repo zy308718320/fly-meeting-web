@@ -21,6 +21,7 @@
 <script>
 import { spawn, Thread, Worker } from 'threads';
 import helper from '@/utils/helper';
+import loadWebAssembly from '@/utils/loadWebAssembly';
 import { inside } from '@/utils/adaptive';
 import { loadConfigs, segmentConfigs } from '@/configs/bodyPixDefault';
 
@@ -75,6 +76,9 @@ export default {
   },
   mounted() {
     this.init();
+    loadWebAssembly('opencv_js.wasm').then((instance) => {
+      console.log(instance.exports);
+    });
   },
   async beforeUnmount() {
     await Thread.terminate(this.worker);
@@ -144,12 +148,16 @@ export default {
 };
 </script>
 
-<style lang="less" scoped>
+<style
+  lang="less"
+  scoped
+>
 .video-wrap {
   position: relative;
   overflow: hidden;
   background: #000;
 }
+
 .mirror {
   transform: rotate3d(0, 1, 0, 180deg);
 }

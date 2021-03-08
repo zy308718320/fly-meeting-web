@@ -3,3 +3,4 @@ src/mock/*.js
 *.config.js
 tests
 src/utils/test/
+src/workers/
