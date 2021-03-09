@@ -6,9 +6,10 @@ export default (filename, imports = {}) => fetch(filename)
     Object.assign(imports.env, {
       memoryBase: 0,
       tableBase: 0,
-      memory: new WebAssembly.Memory({ initial: 256 }),
-      table: new WebAssembly.Table({ initial: 0, maximum: 0, element: 'anyfunc' }),
+      memory: new WebAssembly.Memory({ initial: 10, maximum: 100 }),
+      table: new WebAssembly.Table({ initial: 10, element: 'anyfunc' }),
     });
+    // const mod = new WebAssembly.Module(buffer);
     return WebAssembly.instantiate(buffer, imports);
   })
   .then((results) => results.instance);

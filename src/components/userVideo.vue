@@ -76,8 +76,9 @@ export default {
   },
   mounted() {
     this.init();
-    loadWebAssembly('opencv_js.wasm').then((instance) => {
-      console.log(instance.exports);
+    loadWebAssembly('main.wasm', {
+    }).then((instance) => {
+      console.log(instance.exports.main());
     });
   },
   async beforeUnmount() {
