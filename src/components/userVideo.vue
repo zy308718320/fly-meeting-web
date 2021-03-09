@@ -21,7 +21,7 @@
 <script>
 import { spawn, Thread, Worker } from 'threads';
 import helper from '@/utils/helper';
-import loadWebAssembly from '@/utils/loadWebAssembly';
+// import loadWebAssembly from '@/utils/loadWebAssembly';
 import { inside } from '@/utils/adaptive';
 import { loadConfigs, segmentConfigs } from '@/configs/bodyPixDefault';
 
@@ -76,10 +76,10 @@ export default {
   },
   mounted() {
     this.init();
-    loadWebAssembly('main.wasm', {
-    }).then((instance) => {
-      console.log(instance.exports.main());
-    });
+    // loadWebAssembly('factorial.wasm').then((instance) => {
+    //   const { _Z4facti: factorial } = instance.exports;
+    //   console.log(factorial(20));
+    // });
   },
   async beforeUnmount() {
     await Thread.terminate(this.worker);
