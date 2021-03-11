@@ -8,6 +8,7 @@ export default (filename, imports = {}) => fetch(filename)
       tableBase: 0,
       memory: new WebAssembly.Memory({ initial: 10, maximum: 100 }),
       table: new WebAssembly.Table({ initial: 10, element: 'anyfunc' }),
+      exp: Math.exp,
     });
     // const mod = new WebAssembly.Module(buffer);
     return WebAssembly.instantiate(buffer, imports);

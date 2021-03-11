@@ -21,7 +21,7 @@
 <script>
 import { spawn, Thread, Worker } from 'threads';
 import helper from '@/utils/helper';
-// import loadWebAssembly from '@/utils/loadWebAssembly';
+import loadWebAssembly from '@/utils/loadWebAssembly';
 import { inside } from '@/utils/adaptive';
 import { loadConfigs, segmentConfigs } from '@/configs/bodyPixDefault';
 
@@ -77,13 +77,14 @@ export default {
   },
   mounted() {
     this.init();
-    import('@/wasm/').then((module) => {
-      this.bilateralFilter = module.bilateral_filter;
-    });
-    // loadWebAssembly('factorial.wasm').then((instance) => {
-    //   const { _Z4facti: factorial } = instance.exports;
-    //   console.log(factorial(20));
+    // import('@/wasm/').then((module) => {
+    //   this.bilateralFilter = module.bilateral_filter;
     // });
+    loadWebAssembly('bilateral_filter_rs.wasm').then((instance) => {
+      // const { _Z4facti: factorial } = instance.exports;
+      this.bilateralFilter = instance.exports.bilateral_filter;
+      // console.log(instance.exports.bilateral_filter);
+    });
   },
   async beforeUnmount() {
     await Thread.terminate(this.worker);
@@ -119,7 +120,7 @@ export default {
         shadowCtx.drawImage(resultVideo, 0, 0, videoCanvas.width, videoCanvas.height);
         resultVideo = shadowCtx.getImageData(0, 0, videoCanvas.width, videoCanvas.height);
         // 美颜磨皮（双边滤波）
-        this.bilateralFilter(resultVideo.data, 0.03, 0.1, resultVideo.width, resultVideo.height, 4);
+        // this.bilateralFilter(resultVideo.data, 0.03, 0.1, resultVideo.width, resultVideo.height, 4);
         // resultVideo = await worker.handleFilter('Bilateral', [resultVideo, 3, 12]);
         if (this.filterType) {
           const segmentation = await worker.handleBodyPix(
