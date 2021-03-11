@@ -62,6 +62,7 @@ export default {
       videoHeight: 0,
       videoLeft: 0,
       videoTop: 0,
+      bilateralFilter: null,
     };
   },
   watch: {
@@ -76,6 +77,9 @@ export default {
   },
   mounted() {
     this.init();
+    import('@/wasm/').then((module) => {
+      this.bilateralFilter = module.bilateral_filter;
+    });
     // loadWebAssembly('factorial.wasm').then((instance) => {
     //   const { _Z4facti: factorial } = instance.exports;
     //   console.log(factorial(20));
@@ -114,6 +118,7 @@ export default {
         let resultVideo = video;
         shadowCtx.drawImage(resultVideo, 0, 0, videoCanvas.width, videoCanvas.height);
         resultVideo = shadowCtx.getImageData(0, 0, videoCanvas.width, videoCanvas.height);
+        this.bilateralFilter(resultVideo, 0.03, 0.1, videoCanvas.width, videoCanvas.height, 4);
         // 美颜磨皮（双边滤波）
         // resultVideo = await worker.handleFilter('Bilateral', [resultVideo, 3, 12]);
         if (this.filterType) {

@@ -4,3 +4,4 @@ src/mock/*.js
 tests
 src/utils/test/
 src/workers/
+src/wasm/

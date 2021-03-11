@@ -24,3 +24,6 @@ yarn-error.log*
 /.cz-config.js
 /tests/coverage/
 /junit.xml
+src/wasm/
+rust-wasm/target
+Cargo.lock
