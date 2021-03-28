@@ -185,7 +185,6 @@ export default {
     let g;
     let b;
     let rgb = [];
-
     if (s === 0) {
       r = g = b = l * 255 + 0.5 | 0;
       rgb = [r, g, b];
@@ -218,6 +217,25 @@ export default {
       }
     }
     return rgb;
+  },
+  rgbToRgba(src) {
+    const dst = new Uint8ClampedArray(src.length * 4 / 3);
+    for (let i = 0, j = 0; i < src.length; i += 3, j += 1) {
+      dst[i + j] = src[i];
+      dst[i + j + 1] = src[i + 1];
+      dst[i + j + 2] = src[i + 2];
+      dst[i + j + 3] = 255;
+    }
+    return dst;
+  },
+  rgbaToRgb(src) {
+    const dst = new Uint8ClampedArray(src.length * 3 / 4);
+    for (let i = 0, j = 0; i < src.length; i += 4, j += 1) {
+      dst[i - j] = src[i];
+      dst[i - j + 1] = src[i + 1];
+      dst[i - j + 2] = src[i + 2];
+    }
+    return dst;
   },
   getIntensities(srcImageData) {
     const result = new Float32Array(srcImageData.width * srcImageData.height);

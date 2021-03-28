@@ -9,6 +9,8 @@
     <user-video
       :width="videoWidth"
       :height="videoHeight"
+      :is-beautify="isBeautify"
+      :is-compared="isCompared"
       :filter-type="filterType"
       :filter-param="filterParam"
     />
@@ -30,13 +32,15 @@ export default {
   },
   data() {
     return {
-      worker: null,
+      handleRippler: null,
       canvas: null,
       mouseX: null,
       mouseY: null,
       videoWidth: 640,
       videoHeight: 480,
-      filterType: 'Mosaic',
+      isBeautify: true,
+      isCompared: true,
+      filterType: '',
       filterParam: [],
     };
   },
@@ -44,7 +48,7 @@ export default {
     this.init();
   },
   async beforeUnmount() {
-    await Thread.terminate(this.worker);
+    await Thread.terminate(this.handleRippler);
   },
   methods: {
     async init() {
@@ -64,13 +68,13 @@ export default {
       } = this.$refs;
       const ctx = canvas.getContext('2d');
       logo.onload = async () => {
-        this.worker = await spawn(new Worker('@/workers/'));
+        this.handleRippler = await spawn(new Worker('@/workers/handleRippler'));
         canvas.width = logo.width;
         canvas.height = logo.height;
         ctx.drawImage(logo, 0, 0, canvas.width, canvas.height);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const draw = async () => {
-          const result = await this.worker.handleRippler(this.mouseX, this.mouseY, 8, 1, {
+          const result = await this.handleRippler(this.mouseX, this.mouseY, 8, 1, {
             source: imageData,
             strength: 60,
             scale: 8,

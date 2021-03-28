@@ -30,7 +30,45 @@
 
 ### 双边滤波（bilateralFilter）
 
-### 使用WebAssembly
+### WebAssembly
+
+目前我了解到的市面上有3种编译WebAssembly的方式，分别是emscripten、wasm-pack和webassembly.studio三种方式，它们各有利弊。
+
+#### emscripten
+
+主要支持语言: C/C++
+
+优点：
+
+相对而言最成熟最稳定，支持直接编译为asm.js，支持源码sourcemap调试 。
+
+缺点：
+
+安装依赖时可能要考虑python3和python2的共存问题，安装体验不是特别好。会生成一个js胶水代码文件，必须按照他提供的模块化方法组织代码，对于现在普遍使用打包工具工程化的项目不是很友好。
+
+#### wasm-pack
+
+仅支持Rust
+
+优点：
+
+wasm-pack有npm包的版本,并且有带文件监听自动编译的webpack插件，使用体验非常接近现在主流的web开发方式。
+
+缺点：
+
+目前仅支持Rust，也会生成js胶水代码文件，目前感觉不是很稳定，会出现显示编译成功但是没有产物的问题。
+
+#### webassembly.studio
+
+支持C、TS和Rust
+
+优点：
+
+在线创建和编译，无需安装编译环境。不生成且无需使用js胶水代码文件。
+
+缺点：
+
+暂时不支持C++，不支持创建.h文件。
 
 #### 使用opencv.wasm
 
@@ -99,5 +137,9 @@ workerpool、promise-worker、threads.js
 [color-pop-effect-using-bodypix-and-tensorflow-js](https://towardsdatascience.com/color-pop-effect-using-bodypix-and-tensorflow-js-a584ddc48a02)
 
 [imageRoutines](https://github.com/m0ose/imageRoutines)
+
+[c++项目转成wasm全过程](https://zhuanlan.zhihu.com/p/158586853)
+
+[emscripten-pointers-and-pointers](https://kapadia.github.io/emscripten/2013/09/13/emscripten-pointers-and-pointers.html)
 
 [opencv-wasm](https://github.com/yaniswang/opencv-wasm)

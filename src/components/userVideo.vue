@@ -1,19 +1,20 @@
 <template>
   <div
     class="video-wrap mirror"
+    :class="isCompared ? 'compared' : ''"
     :style="`width: ${width}px; height: ${height}px;`"
   >
-    <video
-      ref="video"
-      :width="videoWidth"
-      :height="videoHeight"
-      class="hide"
-    />
     <canvas
       ref="videoCanvas"
       :width="videoWidth"
       :height="videoHeight"
       :style="`transform: translate3d(${videoLeft}px, ${videoTop}px, 0)`"
+    />
+    <video
+      ref="video"
+      :width="videoWidth"
+      :height="videoHeight"
+      class="hide"
     />
   </div>
 </template>
@@ -21,7 +22,6 @@
 <script>
 import { spawn, Thread, Worker } from 'threads';
 import helper from '@/utils/helper';
-import loadWebAssembly from '@/utils/loadWebAssembly';
 import { inside } from '@/utils/adaptive';
 import { loadConfigs, segmentConfigs } from '@/configs/bodyPixDefault';
 
@@ -35,6 +35,14 @@ export default {
     height: {
       type: Number,
       default: 0,
+    },
+    isCompared: {
+      type: Boolean,
+      default: false,
+    },
+    isBeautify: {
+      type: Boolean,
+      default: false,
     },
     filterType: {
       type: String,
@@ -55,7 +63,9 @@ export default {
   data() {
     return {
       isSet: false,
-      worker: null,
+      handleBilateralFilter: null,
+      handleBodyPix: null,
+      handleFilter: null,
       srcVideoWidth: 0,
       srcVideoHeight: 0,
       videoWidth: 0,
@@ -75,41 +85,29 @@ export default {
       this.resize();
     },
   },
-  mounted() {
+  async mounted() {
     this.init();
-    // import('@/wasm/').then((module) => {
-    //   this.bilateralFilter = module.bilateral_filter;
-    // });
-    loadWebAssembly('bilateral_filter_rs.wasm').then((instance) => {
-      // const { _Z4facti: factorial } = instance.exports;
-      this.bilateralFilter = instance.exports.bilateral_filter;
-      // console.log(instance.exports.bilateral_filter);
-    });
   },
   async beforeUnmount() {
-    await Thread.terminate(this.worker);
+    await Thread.terminate(this.handleBilateralFilter);
+    await Thread.terminate(this.handleBodyPix);
+    await Thread.terminate(this.handleFilter);
   },
   methods: {
-    init() {
+    async init() {
+      this.handleBilateralFilter = await spawn(new Worker('@/workers/handleBilateralFilter'));
+      this.handleBodyPix = await spawn(new Worker('@/workers/handleBodyPix'));
+      this.handleFilter = await spawn(new Worker('@/workers/handleFilter'));
       this.play();
     },
     async play() {
-      const {
-        video, videoCanvas,
-      } = this.$refs;
+      const { video, videoCanvas } = this.$refs;
       const { getUserMedia } = navigator.mediaDevices;
       const ctx = videoCanvas.getContext('2d');
       const shadowCanvas = helper.getSampleCanvas();
       const shadowCtx = helper.getSampleContext();
       video.srcObject = await getUserMedia(this.userMediaOptions);
       video.play();
-      video.onloadeddata = () => {
-        this.srcVideoWidth = video.videoWidth;
-        this.srcVideoHeight = video.videoHeight;
-        this.resize();
-      };
-      const worker = await spawn(new Worker('@/workers/'));
-      this.worker = worker;
       const draw = async () => {
         if (!this.isSet && video.videoWidth > 0) {
           shadowCanvas.width = videoCanvas.width;
@@ -117,33 +115,62 @@ export default {
           this.isSet = true;
         }
         let resultVideo = video;
-        shadowCtx.drawImage(resultVideo, 0, 0, videoCanvas.width, videoCanvas.height);
-        resultVideo = shadowCtx.getImageData(0, 0, videoCanvas.width, videoCanvas.height);
-        // 美颜磨皮（双边滤波）
-        // this.bilateralFilter(resultVideo.data, 0.03, 0.1, resultVideo.width, resultVideo.height, 4);
-        // resultVideo = await worker.handleFilter('Bilateral', [resultVideo, 3, 12]);
-        if (this.filterType) {
-          const segmentation = await worker.handleBodyPix(
-            resultVideo,
-            loadConfigs,
-            segmentConfigs,
-          );
-          resultVideo = await worker.handleFilter(this.filterType,
-            [resultVideo, ...this.filterParam, segmentation.data]);
+        shadowCtx.drawImage(
+          resultVideo,
+          0,
+          0,
+          videoCanvas.width,
+          videoCanvas.height,
+        );
+        resultVideo = shadowCtx.getImageData(
+          0,
+          0,
+          videoCanvas.width,
+          videoCanvas.height,
+        );
+        if (this.isBeautify || this.filterType) {
+          if (this.isBeautify) {
+            // 美颜磨皮（双边滤波）
+            const dstPixels = await this.handleBilateralFilter(
+              resultVideo.data,
+              resultVideo.width,
+              resultVideo.height,
+              7,
+            );
+            resultVideo = new ImageData(
+              dstPixels,
+              resultVideo.width,
+              resultVideo.height,
+            );
+          }
+          if (this.filterType) {
+            const segmentation = await this.handleBodyPix(
+              resultVideo,
+              loadConfigs,
+              segmentConfigs,
+            );
+            resultVideo = await this.handleFilter(this.filterType, [
+              resultVideo,
+              ...this.filterParam,
+              segmentation.data,
+            ]);
+          }
           ctx.putImageData(resultVideo, 0, 0);
         } else {
-          ctx.drawImage(resultVideo, 0, 0, videoCanvas.width, videoCanvas.height);
+          ctx.drawImage(video, 0, 0, videoCanvas.width, videoCanvas.height);
         }
         requestAnimationFrame(draw);
       };
-      requestAnimationFrame(draw);
+      video.onloadeddata = () => {
+        this.srcVideoWidth = video.videoWidth;
+        this.srcVideoHeight = video.videoHeight;
+        this.resize();
+        requestAnimationFrame(draw);
+      };
     },
     resize() {
       const {
-        width,
-        height,
-        srcVideoWidth,
-        srcVideoHeight,
+        width, height, srcVideoWidth, srcVideoHeight,
       } = this;
       const dest = inside(width, height, srcVideoWidth, srcVideoHeight);
       this.videoWidth = dest.width;
@@ -167,5 +194,17 @@ export default {
 
 .mirror {
   transform: rotate3d(0, 1, 0, 180deg);
+}
+
+.compared {
+  display: flex;
+  justify-content: center;
+  width: auto !important;
+  background: #fff;
+  overflow: visible;
+
+  .hide {
+    display: block;
+  }
 }
 </style>

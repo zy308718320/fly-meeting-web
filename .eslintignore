@@ -5,3 +5,4 @@ tests
 src/utils/test/
 src/workers/
 src/wasm/
+src/lib/

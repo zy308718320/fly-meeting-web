@@ -65,7 +65,7 @@ export default {
     return {
       isSet: false,
       canvas: null,
-      worker: null,
+      handleRippler: null,
       mouseX: 0,
       mouseY: 0,
       imgWidth: 0,
@@ -99,11 +99,11 @@ export default {
     },
   },
   async mounted() {
-    this.worker = await spawn(new Worker('@/workers/'));
+    this.handleRippler = await spawn(new Worker('@/workers/handleRippler'));
     this.play();
   },
   async beforeUnmount() {
-    await Thread.terminate(this.worker);
+    await Thread.terminate(this.handleRippler);
   },
   methods: {
     play() {
@@ -132,7 +132,7 @@ export default {
             imageData = shadowCtx.getImageData(0, 0, imgWidth, imgHeight);
             this.isSet = true;
           }
-          const result = await this.worker.handleRippler(this.mouseX, this.mouseY, 8, 1, {
+          const result = await this.handleRippler(this.mouseX, this.mouseY, 8, 1, {
             source: imageData,
             strength: 60,
             scale: 8,

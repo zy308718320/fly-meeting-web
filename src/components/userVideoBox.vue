@@ -6,6 +6,7 @@
     <user-video
       :width="windowWidth"
       :height="windowHeight"
+      :is-beautify="isBeautify"
       :filter-type="filterType"
       :filter-param="filterParam"
     />
@@ -24,7 +25,8 @@ export default {
   },
   data() {
     return {
-      filterType: 'Edge',
+      isBeautify: true,
+      filterType: 'Mosaic',
       filterParam: [],
     };
   },
