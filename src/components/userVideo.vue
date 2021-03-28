@@ -1,7 +1,6 @@
 <template>
   <div
-    class="video-wrap mirror"
-    :class="isCompared ? 'compared' : ''"
+    :class="videoWrapClass"
     :style="`width: ${width}px; height: ${height}px;`"
   >
     <canvas
@@ -40,17 +39,9 @@ export default {
       type: Boolean,
       default: false,
     },
-    isBeautify: {
-      type: Boolean,
-      default: false,
-    },
-    filterType: {
-      type: String,
-      default: '',
-    },
-    filterParam: {
-      type: Array,
-      default: () => [],
+    videoSetting: {
+      type: Object,
+      default: () => ({}),
     },
     userMediaOptions: {
       type: Object,
@@ -66,14 +57,26 @@ export default {
       handleBilateralFilter: null,
       handleBodyPix: null,
       handleFilter: null,
+      loading: null,
       srcVideoWidth: 0,
       srcVideoHeight: 0,
       videoWidth: 0,
       videoHeight: 0,
       videoLeft: 0,
       videoTop: 0,
-      bilateralFilter: null,
     };
+  },
+  computed: {
+    videoWrapClass() {
+      let classText = 'video-wrap';
+      if (this.videoSetting.isMirror) {
+        classText += ' mirror';
+      }
+      if (this.isCompared) {
+        classText += ' compared';
+      }
+      return classText;
+    },
   },
   watch: {
     width() {
@@ -95,6 +98,12 @@ export default {
   },
   methods: {
     async init() {
+      this.loading = this.$loading({
+        lock: true,
+        text: '资源加载中...',
+        spinner: 'el-icon-loading',
+        background: 'rgba(0, 0, 0, 0.7)',
+      });
       this.handleBilateralFilter = await spawn(new Worker('@/workers/handleBilateralFilter'));
       this.handleBodyPix = await spawn(new Worker('@/workers/handleBodyPix'));
       this.handleFilter = await spawn(new Worker('@/workers/handleFilter'));
@@ -112,6 +121,7 @@ export default {
         if (!this.isSet && video.videoWidth > 0) {
           shadowCanvas.width = videoCanvas.width;
           shadowCanvas.height = videoCanvas.height;
+          this.loading.close();
           this.isSet = true;
         }
         let resultVideo = video;
@@ -128,30 +138,31 @@ export default {
           videoCanvas.width,
           videoCanvas.height,
         );
-        if (this.isBeautify || this.filterType) {
-          if (this.isBeautify) {
+        const { beautify, mask } = this.videoSetting;
+        if (beautify || mask) {
+          if (beautify) {
             // 美颜磨皮（双边滤波）
             const dstPixels = await this.handleBilateralFilter(
               resultVideo.data,
               resultVideo.width,
               resultVideo.height,
-              7,
+              (1 + beautify) * 3,
             );
-            resultVideo = new ImageData(
+            resultVideo = helper.getImageData(
               dstPixels,
               resultVideo.width,
               resultVideo.height,
             );
           }
-          if (this.filterType) {
+          if (mask) {
             const segmentation = await this.handleBodyPix(
               resultVideo,
               loadConfigs,
               segmentConfigs,
             );
-            resultVideo = await this.handleFilter(this.filterType, [
+            resultVideo = await this.handleFilter(mask.filterType, [
               resultVideo,
-              ...this.filterParam,
+              ...mask.filterParam,
               segmentation.data,
             ]);
           }

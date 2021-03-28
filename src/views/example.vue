@@ -9,10 +9,8 @@
     <user-video
       :width="videoWidth"
       :height="videoHeight"
-      :is-beautify="isBeautify"
       :is-compared="isCompared"
-      :filter-type="filterType"
-      :filter-param="filterParam"
+      :video-setting="setting.video"
     />
     <canvas
       ref="canvas"
@@ -22,9 +20,10 @@
 </template>
 
 <script>
-import maskFilterDefault from '@/configs/maskFilterDefault';
-import userVideo from '@/components/userVideo.vue';
+import { mapMutations, mapState } from 'vuex';
 import { spawn, Thread, Worker } from 'threads';
+import * as types from '@/store/mutation-types';
+import userVideo from '@/components/userVideo.vue';
 
 export default {
   components: {
@@ -38,11 +37,13 @@ export default {
       mouseY: null,
       videoWidth: 640,
       videoHeight: 480,
-      isBeautify: true,
       isCompared: true,
-      filterType: '',
-      filterParam: [],
     };
+  },
+  computed: {
+    ...mapState([
+      'setting',
+    ]),
   },
   mounted() {
     this.init();
@@ -51,29 +52,28 @@ export default {
     await Thread.terminate(this.handleRippler);
   },
   methods: {
+    ...mapMutations({
+      setSetting: types.SET_SETTINGS,
+    }),
     async init() {
-      this.filterParam = maskFilterDefault[this.filterType];
       this.run();
+      this.setSetting({
+        ...this.setting,
+        video: {
+          ...this.setting.video,
+          beautify: 1,
+        },
+      });
+      this.handleRippler = await spawn(new Worker('@/workers/handleRippler'));
     },
     run() {
-      // const displayMediaOptions = {
-      //   video: {
-      //     cursor: 'always',
-      //   }, // 视频信息的设置
-      //   audio: false, // 是否包含音频信息
-      //   logicalSurface: false, // 设置是否包含所选屏幕外区域的一些信息
-      // };
       const {
         logo, canvas,
       } = this.$refs;
       const ctx = canvas.getContext('2d');
-      logo.onload = async () => {
-        this.handleRippler = await spawn(new Worker('@/workers/handleRippler'));
-        canvas.width = logo.width;
-        canvas.height = logo.height;
-        ctx.drawImage(logo, 0, 0, canvas.width, canvas.height);
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const draw = async () => {
+      const draw = async () => {
+        if (this.handleRippler) {
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
           const result = await this.handleRippler(this.mouseX, this.mouseY, 8, 1, {
             source: imageData,
             strength: 60,
@@ -82,13 +82,25 @@ export default {
           if (result) {
             ctx.putImageData(result, 0, 0);
           }
-          requestAnimationFrame(draw);
-        };
+        }
+        requestAnimationFrame(draw);
+      };
+      logo.onload = async () => {
+        canvas.width = logo.width;
+        canvas.height = logo.height;
+        ctx.drawImage(logo, 0, 0, canvas.width, canvas.height);
         requestAnimationFrame(draw);
         if (!this.canvas) {
           this.canvas = canvas;
         }
       };
+      // const displayMediaOptions = {
+      //   video: {
+      //     cursor: 'always',
+      //   }, // 视频信息的设置
+      //   audio: false, // 是否包含音频信息
+      //   logicalSurface: false, // 设置是否包含所选屏幕外区域的一些信息
+      // };
       // const { getDisplayMedia } = navigator.mediaDevices;
       // video.srcObject = await getDisplayMedia(displayMediaOptions);
     },

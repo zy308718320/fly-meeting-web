@@ -26,6 +26,11 @@ export default {
       ? this.context.createImageData(w, h)
       : new ImageData(w, h);
   },
+  getImageData(data, w, h) {
+    return new ImageData(
+      data, w, h,
+    );
+  },
   buildMap(f) {
     const m = [];
     for (let k = 0; k < 256; k += 1) {

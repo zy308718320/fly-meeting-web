@@ -1,15 +1,37 @@
 <template>
   <div class="meeting">
-    <user-video-box />
+    <user-video
+      :width="windowWidth"
+      :height="windowHeight"
+      :video-setting="setting.video"
+    />
+    <setting class="meeting-setting" />
   </div>
 </template>
 
 <script>
-import userVideoBox from '@/components/userVideoBox.vue';
+import { mapState } from 'vuex';
+import userVideo from '@/components/userVideo.vue';
+import setting from '@/components/setting.vue';
 
 export default {
   components: {
-    userVideoBox,
+    userVideo,
+    setting,
+  },
+  computed: {
+    ...mapState([
+      'windowWidth',
+      'windowHeight',
+      'setting',
+    ]),
+  },
+  mounted() {
+    this.init();
+  },
+  methods: {
+    init() {
+    },
   },
 };
 </script>
@@ -19,5 +41,10 @@ export default {
   position: relative;
   width: 100%;
   height: 100vh;
+  &-setting{
+    position: absolute;
+    bottom: 50px;
+    right: 50px;
+  }
 }
 </style>
