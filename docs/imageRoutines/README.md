@@ -1,26 +1,44 @@
 # 视频会议图像处理的纯web实现
 
-随着全球疫情的蔓延，越来越多的组织选择了网上上课或者会议，各种各样的视频会议软件也应运而生。但是市面上网页版的视频会议工具仿佛还是很难见到，究竟但是什么制约的web在这个领域的发展？在WebRTC、Web Worker、WebAssembly等技术成熟的背景下，有没有可能实现在纯web的环境下有较好的视频会议体验呢？带着这些问题我做了如下尝试。
+随着全球疫情的蔓延，越来越多的组织选择了网上上课或者会议，各种各样的视频会议软件也应运而生。但是市面上网页版的视频会议工具仿佛还是很难见到，究竟什么制约的web在这个领域的发展？在WebRTC、Web Worker、WebAssembly等技术成熟的背景下，是否能通过更底层的语言和多线程实现流畅的视频处理体验呢？带着这些问题我做了如下尝试。
+
 
 ## 重点需求分析
 
-由于时间和篇幅的关系，本次主要是在图像处理层面的需求分析与技术实现，后续可能再对音频处理及信令服务器通信等方面进行分析和实现。
+参考了一些现有的视频会议软件，我发现背景虚化和美颜是相对比较重要的功能，对于保护隐私和视频效果有些很大的帮助，甚至可能决定了用户是否愿意打开摄像头。同时这也是比较考验性能部分，对前端的性能优化有着很强的挑战。
 
-### 背景虚化
+## 需求拆解
 
-视频会议中所在场景中的背景可能会泄漏一些用户隐私，会让用户比较排斥打开视频，所以背景虚化对于视频会议来说就是一个非常重要的功能。
+核心流程如图：
+![flow.png](images/flow.png)
 
-### 美颜
+### 获取摄像头数据
 
-虽然视频会议还是趋向更真实的形象，但是好的皮肤状态还是能让人更容易展现自己的。更何况有些摄像头会放大脸上的瑕疵，这点就更不好了，所以磨皮也是必不可少的。
+这一步主要是通过`navigator.mediaDevices.getUserMedia`API来实现，之前使用的`navigator.getUserMedia`已经废弃，但是旧版本的浏览器可能还在使用旧版API，可以通过安装`webrtc-adapter`npm包来兼容旧版浏览器。
 
-## 图像处理基础
+### 显示摄像头画面
+
+获取到摄像头数据以后可以通过video元素直接展示出来，具体实现的伪代码如下：
+```js
+const userMediaOptions = {
+  audio: false, 
+  video: { facingMode: 'user' },
+};
+const { getUserMedia } = navigator.mediaDevices;
+video.srcObject = await getUserMedia(userMediaOptions);
+video.play();
+```
+如果浏览器video元素不支持srcObject属性的话，也可以通过`window.URL.createObjectURL`方法将stream数据转换后直接赋值给video元素src属性来实现。
+
+### 视频处理
+
+
 
 ## 背景虚化实现
 
 ### tensorflow.js
 
-模糊背景的效果可以使用`bodyPix.drawBokehEffect`方法快速实现，不过这并不是一个纯函数，并且会直接操作canvas元素，所以想通过`web Worker`的方式解决性能问题是行不通的。实际上`net.segmentPerson`返回的已经是非常有效的数据了，`segmentation.data`是一个`Uint8Array`，它和`ctx.getImageData`返回的Uint8Array虽然不一样但是是有对应关系的。`ctx.getImageData`返回的数据最小值是0，最大值为255，每四个为一组代表一个像素的RGBA值。而`segmentation.data`返回的数据则比较纯粹，一个值就是一个像素，值的范围只有0和1，分别代表不属于人体的像素和属于人体的像素。
+模糊背景的效果可以使用`bodyPix.drawBokehEffect`方法快速实现，不过这并不是一个纯函数，并且会直接操作canvas元素，所以想通过`web Worker`的方式解决性能问题是行不通的。实际上`net.segmentPerson`返回的已经是非常有效的数据了，`segmentation.data`是一个`Uint8Array`，它和`ctx.getImageData`返回的`Uint8Array`虽然不一样但是是有对应关系的。`ctx.getImageData`返回的数据最小值是0，最大值为255，每四个为一组代表一个像素的RGBA值。而`segmentation.data`返回的数据则比较纯粹，一个值就是一个像素，值的范围只有0和1，分别代表不属于人体的像素和属于人体的像素。
 
 ### Web Worker
 
