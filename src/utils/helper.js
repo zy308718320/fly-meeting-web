@@ -4,20 +4,20 @@
 export default {
   canvas: null,
   context: null,
-  initSampleCanvas() {
+  initSampleCanvas(type) {
     if (!this.canvas) {
       const canvas = new OffscreenCanvas(0, 0);
-      const context = canvas.getContext('2d');
+      const context = canvas.getContext(type || '2d');
       this.canvas = canvas;
       this.context = context;
     }
   },
-  getSampleCanvas() {
-    this.initSampleCanvas();
+  getSampleCanvas(type) {
+    this.initSampleCanvas(type);
     return this.canvas;
   },
-  getSampleContext() {
-    this.initSampleCanvas();
+  getSampleContext(type) {
+    this.initSampleCanvas(type);
     return this.context;
   },
   createImageData(w, h) {

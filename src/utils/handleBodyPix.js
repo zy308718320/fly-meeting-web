@@ -5,7 +5,7 @@ let net = null;
 
 export default async function (videoData, loadConfigs, segmentConfigs) {
   if (!net) {
-    tf.getBackend();
+    await tf.setBackend('webgl');
     net = await bodyPix.load(loadConfigs);
   }
   return net.segmentPerson(videoData, segmentConfigs);

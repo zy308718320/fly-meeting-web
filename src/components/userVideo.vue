@@ -35,6 +35,10 @@ export default {
       type: Number,
       default: 0,
     },
+    isWebgl: {
+      type: Boolean,
+      default: false,
+    },
     isCompared: {
       type: Boolean,
       default: false,
@@ -105,6 +109,7 @@ export default {
         background: 'rgba(0, 0, 0, 0.7)',
       });
       this.handleBilateralFilter = await spawn(new Worker('@/workers/handleBilateralFilter'));
+      this.handleBilateralFilterWebgl = await spawn(new Worker('@/workers/handleBilateralFilterWebgl'));
       this.handleBodyPix = await spawn(new Worker('@/workers/handleBodyPix'));
       this.handleFilter = await spawn(new Worker('@/workers/handleFilter'));
       this.play();
@@ -142,12 +147,22 @@ export default {
         if (beautify || mask) {
           if (beautify) {
             // 美颜磨皮（双边滤波）
-            const dstPixels = await this.handleBilateralFilter(
-              resultVideo.data,
-              resultVideo.width,
-              resultVideo.height,
-              (1 + beautify) * 3,
-            );
+            let dstPixels;
+            if (this.isWebgl) {
+              dstPixels = await this.handleBilateralFilterWebgl(
+                resultVideo.data,
+                resultVideo.width,
+                resultVideo.height,
+                beautify,
+              );
+            } else {
+              dstPixels = await this.handleBilateralFilter(
+                resultVideo.data,
+                resultVideo.width,
+                resultVideo.height,
+                (1 + beautify) * 3,
+              );
+            }
             resultVideo = helper.getImageData(
               dstPixels,
               resultVideo.width,
@@ -187,7 +202,9 @@ export default {
       this.videoWidth = dest.width;
       this.videoHeight = dest.height;
       this.videoTop = dest.top;
-      this.videoLeft = dest.left;
+      if (!this.isCompared) {
+        this.videoLeft = dest.left;
+      }
     },
   },
 };

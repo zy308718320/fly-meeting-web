@@ -4,6 +4,8 @@
       :width="windowWidth"
       :height="windowHeight"
       :video-setting="setting.video"
+      :is-compared="true"
+      :is-webgl="true"
     />
     <setting class="meeting-setting" />
   </div>
