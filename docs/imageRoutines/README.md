@@ -203,9 +203,13 @@ resultVideo = await handleFilter(filterType, [
 
 ## 效果
 
-来感受一下十级美颜和背景马赛克的效果吧。
+美颜和背景马赛克的效果（墨镜后期加上去的，防止暴露形象）。
 
 ![effect](images/effect.png)
+
+目前共有10级美颜和8个背景可选
+
+![setting](images/setting.png)
 
 再看一下性能表现。
 
