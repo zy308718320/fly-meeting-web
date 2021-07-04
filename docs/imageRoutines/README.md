@@ -215,7 +215,10 @@ resultVideo = await handleFilter(filterType, [
 
 ### 在线预览
 
-
+[http://9.134.51.24/meeting](http://9.134.51.24/meeting)
+由于浏览器限制获取摄像头数据必须是https请求，这台云开发机并没有配置证书和域名，感兴趣的同学可以手动配置一下
+1. 打开chrome://flags/#unsafely-treat-insecure-origin-as-secure
+2. 在Insecure origins treated as secure一栏输入http://9.134.51.24并开启功能。
 
 ## 总结
 
@@ -239,4 +242,4 @@ resultVideo = await handleFilter(filterType, [
 
 [opencv-wasm](https://github.com/yaniswang/opencv-wasm)
 
-[WebGL入门和实践] (https://blog.csdn.net/qiwoo_weekly/article/details/102693931)
+[WebGL入门和实践](https://blog.csdn.net/qiwoo_weekly/article/details/102693931)
