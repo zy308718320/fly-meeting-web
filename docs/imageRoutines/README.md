@@ -1,6 +1,6 @@
 # 视频会议图像处理的纯web实现
 
-随着全球疫情的蔓延，越来越多的组织选择了网上上课或者会议，各种各样的视频会议软件也应运而生。但是市面上网页版的视频会议工具仿佛还是很难见到，究竟什么制约的web在这个领域的发展？在WebRTC、Web Worker、WebAssembly、Web GUP等技术逐步出现的背景下，是否能通过更底层的语言和多线程实现流畅的视频处理体验呢？带着这些问题我做了如下尝试。
+随着全球疫情的蔓延，越来越多的组织选择了网上上课或者会议，各种各样的视频会议软件也应运而生。但是市面上网页版的视频会议工具仿佛还是很难见到，究竟什么制约的web在这个领域的发展？在WebRTC、Web Worker、WebAssembly、Web GUP等技术逐步成熟的背景下。是否能通过更底层的语言和多线程实现流畅的视频处理体验呢？带着这些问题我做了如下尝试，顺便可以研究一下新技术有哪些应用场景和存在的问题。
 
 ## 重点需求分析
 
@@ -141,25 +141,89 @@ export default async (src, width, height, quality) => {
 
 #### 其他问题
 
-opencv是一个很大的库（6M+），如何按需加载我用到的函数？而且现在quality设置到最低的情况下才能有较好的性能表现，但是这样的美颜效果是不明显的。
+opencv是一个很大的库（6M+），如何按需加载我用到的函数？而且现在quality设置到最低的情况下才能有较好的性能表现，但是这样的美颜效果是不明显的。而且基于WebAssembly其他方案也都有过尝试，无论是Rust还是C/C++都存在使用麻烦并且性能无法达到`real-time`的级别，再考虑到网络延时的情况，这对视频会议来说是完全不能接受的。
 
 ### WebGL
 
-目前WebGUP功能并没有发布，所以我们还是尝试使用WebGL来实现双边滤波的运算。
+可能有很多同学跟我一样，在之前的认知中一直认为WebGL是用来做3D的，然而WebGL一样可以用于数据运算并且很强大。WebAssembly是相对于WebGL是更新的技术，事实上WebGL的`性能天花板`比WebAssembly高很多。我大胆立一个flag，无论任何语言，再好的算法（不使用GPU编程）实现的WebAssembly都不可能有WebGL的运算性能好。而且未来WebGUP功能发布以后更甚之。
+
+这就要从CPU和GPU的架构说起了，如下图所示：
+
+![cpu](images/cpu.png)
+![gpu](images/gpu.png)
+
+CPU主要用来进行通用计算，其更多的是注重控制，负责`逻辑性强的事物处理和串行计算`。GPU则没有复杂的控制逻辑，没有分支预测等这些组件，拥有有大量的`ALU（计算单元）`，专注于`执行高度线程化的并行计算任务`。这也就是为什么挖矿用的是GPU而不是CPU了，还有就是tfjs有两种性能较好的backend方案，虽然在小规模模型运算的情况下，WASM相比于WebGL有些优势，然而在大规模数据模型的场景下，WebGL可以说是完爆其他方案了。
+
+![webglvswasm](images/webglvswasm.png)
+
+如果是对`着色器语言（GLSL）`和`双边滤波算法`比较熟悉的同学可以考虑自己实现一下，我这里是基于网上开源的代码做了简单的重构实现的。重构部分主要是对输入输出参数做了调整，减少副作用和对dom的依赖。实现输入`ImageData`和相应的参数，返回ImageData的能力。可以理解为`纯函数化`，使这段代码也可以运行在`Web Worker`中。
+
+最终调用伪代码如下：
+```js
+import { spawn, Worker } from 'threads';
+
+const handleBilateralFilterWebgl = await spawn(new Worker('@/workers/handleBilateralFilterWebgl'));
+
+const dstPixels = await handleBilateralFilterWebgl(
+  resultVideo.data,
+  resultVideo.width,
+  resultVideo.height,
+  beautifyLevel,
+);
+// dstPixels就是处理完的ImageData，可以拿来继续做其他处理，或者直接绘制到画布。
+```
 
 ## 背景虚化实现
 
-背景虚化的功能可以借助tfjs的BodyPix模型，BodyPix模型可以实时分割人物身体和背景，并且提供`bodyPix.drawBokehEffect`方法快速实现背景虚化，不过这并不是一个纯函数，并且会直接操作canvas元素，所以想通过`web Worker`的方式解决性能问题是行不通的。实际上`net.segmentPerson`返回的已经是非常有效的数据了，`segmentation.data`是一个`Uint8Array`，它和`ctx.getImageData`返回的`Uint8Array`虽然不一样但是是有对应关系的。`ctx.getImageData`返回的数据最小值是0，最大值为255，每四个为一组代表一个像素的RGBA值。而`segmentation.data`返回的数据则比较纯粹，一个值就是一个像素，值的范围只有0和1，分别代表不属于人体的像素和属于人体的像素。
+背景虚化的功能可以借助tfjs的BodyPix模型，BodyPix模型可以实时分割人物身体和背景，并且提供`bodyPix.drawBokehEffect`方法快速实现背景虚化，不过这并不是一个纯函数，并且会直接操作canvas元素，所以想通过`web Worker`的方式解决性能问题是行不通的。
 
-有了这些数据以后可以通过
+实际上`net.segmentPerson`返回的已经是非常有效的数据了，`segmentation.data`是一个`Uint8Array`，它和`ctx.getImageData`返回的`Uint8Array`虽然不一样但是是有对应关系的。`ctx.getImageData`返回的数据最小值是0，最大值为255，每四个为一组代表一个像素的RGBA值。而`segmentation.data`返回的数据则比较纯粹，一个值就是一个像素，值的范围只有0和1，分别代表不属于人体的像素和属于人体的像素。
+
+背景虚化一般是通过高斯模糊之类的模糊算法或者其他的滤镜算法达到无法分辨画面内容同时保持人物清晰的目的。基于canvas滤镜的工作原理就是遍历ImageData，通过一定公式实现对每个像素对RGBA值的更新，在这个过程中我们结合segmentation.data返回的数据就可以通过控制`不属于身体部分的像素更新值`和`属于身体部分的像素不更新值`来实现背景虚化。
+
+调用伪代码如下：
+```js
+import { spawn, Worker } from 'threads';
+
+const handleBodyPix = await spawn(new Worker('@/workers/handleBodyPix'));
+const handleFilter = await spawn(new Worker('@/workers/handleFilter'));
+
+let resultVideo;
+const segmentation = await handleBodyPix(
+  dstPixels,
+  loadConfigs,
+  segmentConfigs,
+);
+resultVideo = await handleFilter(filterType, [
+  resultVideo,
+  ...mask.filterParam,
+  segmentation.data,
+]);
+```
+
+## 效果
+
+来感受一下十级美颜和背景马赛克的效果吧。
+
+![effect](images/effect.png)
+
+再看一下性能表现。
+
+![result](images/result.png)
+
+可以看到这个性能表现可以说是非常完美的，主线程、Worker线程和GPU都在非常均匀的运作，都没有出现`long task`，每个任务稳定在20ms以内。
+
+### 在线预览
+
+
 
 ## 总结
 
-以目前的项目实现来看还是有很多不足的，比如加载的文件过大，使用opencv实现的美颜还是存在的性能问题和美颜效果也不是特别理想的情况
+在实现的过程中走了很多弯路，比如花了很多时间研究了WebAssembly，包括学习并试着修改C++和Rust实现的双边滤波算法和用更优雅的方式生成和引入WASM代码。最终发现很难达到预期的效果。当然多学一些知识也是没有什么坏处的。我觉得前端未来不管做不做3D，都应该学习和掌握一下WebGL、着色器语言和线性代数相关的知识。因为基于CPU的优化始终是有瓶颈的，要想突破的话，还是需要使用到GPU编程的。
 
 ## 愿景
 
-如果有同学对这个项目或者课题感兴趣的话，欢迎加入进来共同创建一个oteam。
+后续在合适的时候，我会将代码开源出来，有同学对这个项目或者课题感兴趣的话，可以一起实现产品化或者创建一个oteam。
 
 ## 参考资料
 
@@ -174,3 +238,5 @@ opencv是一个很大的库（6M+），如何按需加载我用到的函数？�
 [emscripten-pointers-and-pointers](https://kapadia.github.io/emscripten/2013/09/13/emscripten-pointers-and-pointers.html)
 
 [opencv-wasm](https://github.com/yaniswang/opencv-wasm)
+
+[WebGL入门和实践] (https://blog.csdn.net/qiwoo_weekly/article/details/102693931)
