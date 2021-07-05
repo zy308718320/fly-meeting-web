@@ -145,7 +145,7 @@ opencv是一个很大的库（6M+），如何按需加载我用到的函数？�
 
 ### WebGL
 
-可能有很多同学跟我一样，在之前的认知中一直认为WebGL是用来做3D的，然而WebGL一样可以用于数据运算并且很强大。WebAssembly是相对于WebGL是更新的技术，事实上WebGL的`性能天花板`比WebAssembly高很多。我大胆立一个flag，无论任何语言，再好的算法（不使用GPU编程）实现的WebAssembly都不可能有WebGL的运算性能好。而且未来WebGUP功能发布以后更甚之。
+可能有很多同学跟我一样，在之前的认知中一直认为WebGL是用来做3D的，然而WebGL一样可以用于数据运算并且很强大。WebAssembly是相对于WebGL是更新的技术，事实上WebGL的`性能天花板`比WebAssembly高很多。而且未来WebGUP功能发布以后更甚之。
 
 这就要从CPU和GPU的架构说起了，如下图所示：
 
@@ -157,6 +157,42 @@ CPU主要用来进行通用计算，其更多的是注重控制，负责`逻辑�
 ![webglvswasm](images/webglvswasm.png)
 
 如果是对`着色器语言（GLSL）`和`双边滤波算法`比较熟悉的同学可以考虑自己实现一下，我这里是基于网上开源的代码做了简单的重构实现的。重构部分主要是对输入输出参数做了调整，减少副作用和对dom的依赖。实现输入`ImageData`和相应的参数，返回ImageData的能力。可以理解为`纯函数化`，使这段代码也可以运行在`Web Worker`中。
+
+WebGL的实现过程简单来说就是基于纹理进行的一次或多次程序处理，伪代码如下：
+```js
+function render(srcObject, width, height) {
+ if (this.gl) {
+   const { gl } = this;
+   let c = 0;
+   if (this.videoHeight === width && this.videoWidth === height) {
+     c = 2;
+   }
+   gl.viewport(0, 0, width, height);
+   gl.bindTexture(gl.TEXTURE_2D, this.inputTexture);
+   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, srcObject);
+   for (let u = BeautyEffectEnabled ? this.programs.length - 1 : 0, l = 0; l <= u; l++) {
+     const prog = this.programs[l].program;
+     gl.useProgram(prog);
+     const f = gl.getUniformLocation(prog, 'u_image');
+     this.programs[l].setUniforms();
+     gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffers[c + l % 2]);
+     gl.clearColor(0, 0, 0, 1);
+     gl.clear(gl.COLOR_BUFFER_BIT);
+     gl.drawArrays(gl.TRIANGLES, 0, 6);
+     gl.activeTexture(gl.TEXTURE0);
+     gl.bindTexture(gl.TEXTURE_2D, this.textures[c + l % 2]);
+     gl.uniform1i(f, 0);
+   }
+   gl.useProgram(this.firstProgram);
+   const p = gl.getUniformLocation(this.firstProgram, 'u_flipY');
+   gl.uniform1f(p, -1);
+   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+   gl.clearColor(0, 0, 0, 1);
+   gl.clear(gl.COLOR_BUFFER_BIT);
+   gl.drawArrays(gl.TRIANGLES, 0, 6);
+ }
+}
+```
 
 最终调用伪代码如下：
 ```js
@@ -199,6 +235,35 @@ resultVideo = await handleFilter(filterType, [
   ...mask.filterParam,
   segmentation.data,
 ]);
+```
+
+结合一个相对比较简单的二值化（Binarize）滤镜实现来看：
+```js
+export function Binarize(srcImageData, threshold, maskArray) {
+  const srcPixels = srcImageData.data;
+  const srcWidth = srcImageData.width;
+  const srcHeight = srcImageData.height;
+  const srcLength = srcPixels.length;
+  const dstImageData = helper.createImageData(srcWidth, srcHeight);
+  const dstPixels = dstImageData.data;
+  if (isNaN(threshold)) {
+    threshold = 0.5;
+  }
+  threshold *= 255;
+  for (let i = 0; i < srcLength; i += 4) {
+    // maskArray对应的就是tfjs返回的segmentation.data数据，isMask表示是在背景中的像素则需要处理。
+    const isMask = helper.getIsMask(maskArray, i);
+    if (!isMask) {
+      const avg = srcPixels[i] + srcPixels[i + 1] + srcPixels[i + 2] / 3;
+      // 将RGB值平均数小于threshold的像素RGB值设置为0，否则设置为255。
+      dstPixels[i] = dstPixels[i + 1] = dstPixels[i + 2] = avg <= threshold ? 0 : 255;
+      dstPixels[i + 3] = 255;
+    } else {
+      helper.copyPixel(dstPixels, srcPixels, i);
+    }
+  }
+  return dstImageData;
+}
 ```
 
 ## 效果
