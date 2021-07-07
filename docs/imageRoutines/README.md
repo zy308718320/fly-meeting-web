@@ -48,7 +48,7 @@ video.play();
 
 通过多线程的方式减少主线程的压力是否可以改善这种情况呢？
 
-这里我选用了[threads.js]()库作为Web Worker创建和管理的工具，它在github有1.4k的star，支持多种环境，并且可以通过webpack插件进行构建。
+这里我选用了[threads.js](https://threads.js.org/)库作为Web Worker创建和管理的工具，它在github有1.4k的star，支持多种环境，并且可以通过webpack插件进行构建。
 
 经过多线程的优化后，我们可以看到此时的主线程中的任务耗时减少到10ms+了，但是视频的卡顿并没有得到缓解。
 
@@ -145,7 +145,7 @@ opencv是一个很大的库（6M+），如何按需加载我用到的函数？�
 
 ### WebGL
 
-可能有很多同学跟我一样，在之前的认知中一直认为WebGL是用来做3D的，然而WebGL一样可以用于数据运算并且很强大。WebAssembly是相对于WebGL是更新的技术，事实上WebGL的`性能天花板`比WebAssembly高很多。而且未来WebGUP功能发布以后更甚之。
+可能有很多同学跟我一样，在之前的认知中一直认为WebGL是用来做3D的，然而WebGL一样可以用于数据运算并且很强大。WebAssembly是相对于WebGL是更新的技术，事实上WebGL的`性能天花板`比WebAssembly高很多。而且未来WebGPU功能发布以后更甚之。
 
 这就要从CPU和GPU的架构说起了，如下图所示：
 
